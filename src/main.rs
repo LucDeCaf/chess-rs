@@ -1,8 +1,19 @@
+use std::ops::RangeInclusive;
+
+// Starting position
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const WHITE_PIECE_MASK_INDEXES: RangeInclusive<usize> = 0..=5;
+const BLACK_PIECE_MASK_INDEXES: RangeInclusive<usize> = 6..=11;
 
 #[derive(Debug)]
 struct Board {
     bitboards: Vec<u64>,
+    is_white_turn: bool,
+}
+
+struct Move {
+    start: u8,
+    target: u8,
 }
 
 impl Board {
@@ -12,6 +23,7 @@ impl Board {
                 0, 0, 0, 0, 0, 0, // White pieces
                 0, 0, 0, 0, 0, 0, // Black pieces
             ],
+            is_white_turn: true,
         };
         s.load_from_fen(fen);
         s
@@ -54,6 +66,43 @@ impl Board {
                 _ => (),
             }
         }
+
+        // Check whose turn it is
+        self.is_white_turn = match segments.next().expect("FEN string should have 6 segments") {
+            "w" => true,
+            "b" => false,
+            _ => panic!("Second section of FEN string should be either 'w' or 'b'."),
+        };
+    }
+
+    fn make_move(&mut self, mv: &Move) {
+        let (start_mask_indices, target_mask_indices) = match self.is_white_turn {
+            true => (WHITE_PIECE_MASK_INDEXES, BLACK_PIECE_MASK_INDEXES),
+            false => (BLACK_PIECE_MASK_INDEXES, WHITE_PIECE_MASK_INDEXES),
+        };
+
+        // Start with 1 all the way on the left, then adjust from there
+        let start_mask = 1 << 63 >> mv.start;
+        let target_mask = 1 << 63 >> mv.target;
+
+        for i in start_mask_indices {
+            if self.bitboards[i] & start_mask == start_mask {
+                println!("mask found: {i}");
+                println!("mask: {:064b}\n", self.bitboards[i] ^ start_mask);
+                // If current mask == mask of moved piece, remove the piece from its current
+                // square and replace it on the correct one
+                self.bitboards[i] &= !start_mask;
+                self.bitboards[i] |= target_mask;
+            }
+        }
+
+        for i in target_mask_indices {
+            // Remove any enemy pieces found on the target
+            self.bitboards[i] &= !target_mask;
+        }
+
+        // Swap turns
+        self.is_white_turn = !self.is_white_turn;
     }
 
     fn piece_to_bitboard_index(piece: char) -> usize {
@@ -89,18 +138,29 @@ impl Board {
     }
 
     fn print_mask(mask: u64) {
-        let string_mask = format!("{:064b}", mask.reverse_bits());
+        let string_mask = format!("{:064b}", mask);
+        let mut lines = [""; 8];
 
         let mut i = 7;
         while i < 64 {
-            println!("{}", &string_mask[i-7..=i]);
+            lines[(i + 1) / 8 - 1] = &string_mask[i - 7..=i];
             i += 8;
+        }
+
+        for line in lines.iter().rev() {
+            println!("{}", line);
         }
     }
 }
 
 fn main() {
     let mut board = Board::new(START_FEN);
+    let nf3 = Move {
+        start: 6,
+        target: 21,
+    };
+
+    board.make_move(&nf3);
 
     Board::print_mask(board.pieces_mask());
 }
