@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
-// Starting position
-const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+// sourceing position
+const source_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const WHITE_PIECE_MASK_INDEXES: RangeInclusive<usize> = 0..=5;
 const BLACK_PIECE_MASK_INDEXES: RangeInclusive<usize> = 6..=11;
 
@@ -12,7 +12,7 @@ struct Board {
 }
 
 struct Move {
-    start: u8,
+    source: u8,
     target: u8,
 }
 
@@ -75,27 +75,15 @@ impl Board {
         };
     }
 
-    fn make_move(&mut self, mv: &Move) -> bool {
-        // Don't let pieces go to their own square as a move
-        if mv.start == mv.target {
-            return false;
-        }
-
+    fn make_move(&mut self, mv: &Move) {
         let (start_mask_indices, target_mask_indices) = match self.is_white_turn {
             true => (WHITE_PIECE_MASK_INDEXES, BLACK_PIECE_MASK_INDEXES),
             false => (BLACK_PIECE_MASK_INDEXES, WHITE_PIECE_MASK_INDEXES),
         };
 
         // Start with 1 all the way on the left, then adjust from there
-        let start_mask = 1 << 63 >> mv.start;
+        let start_mask = 1 << 63 >> mv.source;
         let target_mask = 1 << 63 >> mv.target;
-
-        // Don't allow pieces to capture friendly pieces
-        for i in start_mask_indices.clone() {
-            if self.bitboards[i] & target_mask == target_mask {
-                return false;
-            }
-        }
 
         let mut piece_found = false;
         for i in start_mask_indices {
@@ -109,11 +97,6 @@ impl Board {
             }
         }
 
-        // Don't allow moves from empty squares or enemy pieces
-        if !piece_found {
-            return false;
-        }
-
         // Capture enemy pieces if there
         for i in target_mask_indices {
             // Remove any enemy pieces found on the target
@@ -122,21 +105,17 @@ impl Board {
 
         // Swap turns
         self.is_white_turn = !self.is_white_turn;
-
-        true
     }
 
-    fn unmake_move(&mut self, mv: &Move) -> bool {
+    fn unmake_move(&mut self, mv: &Move) {
         let reverse_move = Move {
-            start: mv.target,
-            target: mv.start,
+            source: mv.target,
+            target: mv.source,
         };
 
         self.is_white_turn = !self.is_white_turn;
-        let success = self.make_move(&reverse_move);
+        self.make_move(&reverse_move);
         self.is_white_turn = !self.is_white_turn;
-
-        success
     }
 
     fn piece_to_bitboard_index(piece: char) -> usize {
@@ -188,18 +167,18 @@ impl Board {
 }
 
 fn main() {
-    let mut board = Board::new(START_FEN);
+    let mut board = Board::new(source_FEN);
 
     let e4 = Move {
-        start: 12,  // e2
+        source: 12,  // e2
         target: 28, // e4
     };
     let e5 = Move {
-        start: 52,  // e7
+        source: 52,  // e7
         target: 36, // e5
     };
     let c5 = Move {
-        start: 50,  // c7
+        source: 50,  // c7
         target: 34, // c5
     };
 
