@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 // sourceing position
-const source_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const WHITE_PIECE_MASK_INDEXES: RangeInclusive<usize> = 0..=5;
 const BLACK_PIECE_MASK_INDEXES: RangeInclusive<usize> = 6..=11;
 
@@ -167,7 +167,7 @@ impl Board {
 }
 
 fn main() {
-    let mut board = Board::new(source_FEN);
+    let mut board = Board::new(START_FEN);
 
     let e4 = Move {
         source: 12,  // e2
