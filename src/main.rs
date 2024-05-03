@@ -77,8 +77,30 @@ impl Board {
             _ => panic!("Invalid piece char '{piece}'"),
         }
     }
+
+    fn pieces_mask(&self) -> u64 {
+        let mut board_mask: u64 = 0;
+
+        for bitboard in &self.bitboards {
+            board_mask |= bitboard;
+        }
+
+        board_mask
+    }
+
+    fn print_mask(mask: u64) {
+        let string_mask = format!("{:064b}", mask.reverse_bits());
+
+        let mut i = 7;
+        while i < 64 {
+            println!("{}", &string_mask[i-7..=i]);
+            i += 8;
+        }
+    }
 }
 
 fn main() {
-    let board = Board::new(START_FEN);
+    let mut board = Board::new(START_FEN);
+
+    Board::print_mask(board.pieces_mask());
 }
