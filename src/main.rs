@@ -75,7 +75,12 @@ impl Board {
         };
     }
 
-    fn make_move(&mut self, mv: &Move) {
+    fn make_move(&mut self, mv: &Move) -> bool {
+        // Don't let pieces go to their own square as a move
+        if mv.start == mv.target {
+            return false;
+        }
+
         let (start_mask_indices, target_mask_indices) = match self.is_white_turn {
             true => (WHITE_PIECE_MASK_INDEXES, BLACK_PIECE_MASK_INDEXES),
             false => (BLACK_PIECE_MASK_INDEXES, WHITE_PIECE_MASK_INDEXES),
@@ -85,10 +90,18 @@ impl Board {
         let start_mask = 1 << 63 >> mv.start;
         let target_mask = 1 << 63 >> mv.target;
 
+        // Don't allow pieces to capture friendly pieces
+        for i in start_mask_indices.clone() {
+            if self.bitboards[i] & target_mask == target_mask {
+                return false;
+            }
+        }
+
+        let mut piece_found = false;
         for i in start_mask_indices {
             if self.bitboards[i] & start_mask == start_mask {
-                println!("mask found: {i}");
-                println!("mask: {:064b}\n", self.bitboards[i] ^ start_mask);
+                piece_found = true;
+
                 // If current mask == mask of moved piece, remove the piece from its current
                 // square and replace it on the correct one
                 self.bitboards[i] &= !start_mask;
@@ -96,6 +109,12 @@ impl Board {
             }
         }
 
+        // Don't allow moves from empty squares or enemy pieces
+        if !piece_found {
+            return false;
+        }
+
+        // Capture enemy pieces if there
         for i in target_mask_indices {
             // Remove any enemy pieces found on the target
             self.bitboards[i] &= !target_mask;
@@ -103,6 +122,8 @@ impl Board {
 
         // Swap turns
         self.is_white_turn = !self.is_white_turn;
+
+        true
     }
 
     fn piece_to_bitboard_index(piece: char) -> usize {
@@ -155,12 +176,19 @@ impl Board {
 
 fn main() {
     let mut board = Board::new(START_FEN);
-    let nf3 = Move {
-        start: 6,
-        target: 21,
+
+    let e4 = Move {
+        start: 12,  // e2
+        target: 28, // e4
+    };
+    let c5 = Move {
+        start: 50,  // c7
+        target: 34, // c5
     };
 
-    board.make_move(&nf3);
+    let was_success = board.make_move(&e4);
+    let was_success = board.make_move(&c5);
 
     Board::print_mask(board.pieces_mask());
+    println!("move was {}successful", if was_success { "" } else { "un" });
 }
