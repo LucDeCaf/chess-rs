@@ -1,14 +1,28 @@
+use chess::board_helper::BoardHelper;
 use std::ops::RangeInclusive;
 
-// sourceing position
+// Starting position
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 const WHITE_PIECE_MASK_INDEXES: RangeInclusive<usize> = 0..=5;
 const BLACK_PIECE_MASK_INDEXES: RangeInclusive<usize> = 6..=11;
 
 #[derive(Debug)]
 struct Board {
+    // Game data
     bitboards: Vec<u64>,
     is_white_turn: bool,
+
+    // Piece move tables (to be optimised)
+    white_pawn_move_masks: [u64; 64],
+    black_pawn_move_masks: [u64; 64],
+    white_pawn_capture_masks: [u64; 64],
+    black_pawn_capture_masks: [u64; 64],
+    knight_masks: [u64; 64],
+    bishop_masks: [u64; 64],
+    rook_masks: [u64; 64],
+    queen_masks: [u64; 64], // queen_masks[i] == rook_masks[i] & bishop_masks[i]
+    king_masks: [u64; 64],
 }
 
 struct Move {
@@ -18,15 +32,24 @@ struct Move {
 
 impl Board {
     fn new(fen: &str) -> Self {
-        let mut s = Self {
+        let mut board = Board {
             bitboards: vec![
                 0, 0, 0, 0, 0, 0, // White pieces
                 0, 0, 0, 0, 0, 0, // Black pieces
             ],
             is_white_turn: true,
+            white_pawn_move_masks: BoardHelper::generate_white_pawn_masks(),
+            black_pawn_move_masks: BoardHelper::generate_black_pawn_masks(),
+            white_pawn_capture_masks: [0; 64],
+            black_pawn_capture_masks: [0; 64],
+            knight_masks: [0; 64],
+            bishop_masks: [0; 64],
+            rook_masks: [0; 64],
+            queen_masks: [0; 64],
+            king_masks: [0; 64],
         };
-        s.load_from_fen(fen);
-        s
+        board.load_from_fen(fen);
+        board
     }
 
     fn load_from_fen(&mut self, fen: &str) {
@@ -57,7 +80,7 @@ impl Board {
 
                 // Add piece
                 'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
-                    let board_index = Board::piece_to_bitboard_index(ch);
+                    let board_index = BoardHelper::piece_to_bitboard_index(ch);
                     self.bitboards[board_index] |= 1 << current_pos;
                     current_pos += 1;
                 }
@@ -85,11 +108,8 @@ impl Board {
         let start_mask = 1 << 63 >> mv.source;
         let target_mask = 1 << 63 >> mv.target;
 
-        let mut piece_found = false;
         for i in start_mask_indices {
             if self.bitboards[i] & start_mask == start_mask {
-                piece_found = true;
-
                 // If current mask == mask of moved piece, remove the piece from its current
                 // square and replace it on the correct one
                 self.bitboards[i] &= !start_mask;
@@ -118,28 +138,6 @@ impl Board {
         self.is_white_turn = !self.is_white_turn;
     }
 
-    fn piece_to_bitboard_index(piece: char) -> usize {
-        match piece {
-            // White
-            'P' => 0,
-            'N' => 1,
-            'B' => 2,
-            'R' => 3,
-            'Q' => 4,
-            'K' => 5,
-
-            // Black
-            'p' => 6,
-            'n' => 7,
-            'b' => 8,
-            'r' => 9,
-            'q' => 10,
-            'k' => 11,
-
-            _ => panic!("Invalid piece char '{piece}'"),
-        }
-    }
-
     fn pieces_mask(&self) -> u64 {
         let mut board_mask: u64 = 0;
 
@@ -149,36 +147,21 @@ impl Board {
 
         board_mask
     }
-
-    fn print_mask(mask: u64) {
-        let string_mask = format!("{:064b}", mask);
-        let mut lines = [""; 8];
-
-        let mut i = 7;
-        while i < 64 {
-            lines[(i + 1) / 8 - 1] = &string_mask[i - 7..=i];
-            i += 8;
-        }
-
-        for line in lines.iter().rev() {
-            println!("{}", line);
-        }
-    }
 }
 
 fn main() {
     let mut board = Board::new(START_FEN);
 
     let e4 = Move {
-        source: 12,  // e2
+        source: 12, // e2
         target: 28, // e4
     };
     let e5 = Move {
-        source: 52,  // e7
+        source: 52, // e7
         target: 36, // e5
     };
     let c5 = Move {
-        source: 50,  // c7
+        source: 50, // c7
         target: 34, // c5
     };
 
@@ -187,5 +170,8 @@ fn main() {
     board.unmake_move(&c5);
     board.make_move(&e5);
 
-    Board::print_mask(board.pieces_mask());
+    let index = 12;
+    BoardHelper::print_mask(
+        board.black_pawn_move_masks[index] | board.white_pawn_move_masks[index],
+    );
 }
