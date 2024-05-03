@@ -126,6 +126,19 @@ impl Board {
         true
     }
 
+    fn unmake_move(&mut self, mv: &Move) -> bool {
+        let reverse_move = Move {
+            start: mv.target,
+            target: mv.start,
+        };
+
+        self.is_white_turn = !self.is_white_turn;
+        let success = self.make_move(&reverse_move);
+        self.is_white_turn = !self.is_white_turn;
+
+        success
+    }
+
     fn piece_to_bitboard_index(piece: char) -> usize {
         match piece {
             // White
@@ -181,14 +194,19 @@ fn main() {
         start: 12,  // e2
         target: 28, // e4
     };
+    let e5 = Move {
+        start: 52,  // e7
+        target: 36, // e5
+    };
     let c5 = Move {
         start: 50,  // c7
         target: 34, // c5
     };
 
-    let was_success = board.make_move(&e4);
-    let was_success = board.make_move(&c5);
+    board.make_move(&e4);
+    board.make_move(&c5);
+    board.unmake_move(&c5);
+    board.make_move(&e5);
 
     Board::print_mask(board.pieces_mask());
-    println!("move was {}successful", if was_success { "" } else { "un" });
 }
