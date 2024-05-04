@@ -42,7 +42,7 @@ impl Board {
             black_pawn_move_masks: BoardHelper::generate_black_pawn_masks(),
             white_pawn_capture_masks: [0; 64],
             black_pawn_capture_masks: [0; 64],
-            knight_masks: [0; 64],
+            knight_masks: BoardHelper::generate_knight_masks(),
             bishop_masks: [0; 64],
             rook_masks: [0; 64],
             queen_masks: [0; 64],
@@ -165,13 +165,5 @@ fn main() {
         target: 34, // c5
     };
 
-    board.make_move(&e4);
-    board.make_move(&c5);
-    board.unmake_move(&c5);
-    board.make_move(&e5);
-
-    let index = 12;
-    BoardHelper::print_mask(
-        board.black_pawn_move_masks[index] | board.white_pawn_move_masks[index],
-    );
+    BoardHelper::print_mask(board.knight_masks[15]);
 }

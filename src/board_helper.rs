@@ -1,5 +1,7 @@
 pub struct BoardHelper;
 
+const KNIGHT_MOVE_OFFSETS: [i8; 8] = [15, 17, 6, 10, -10, -6, -17, -15];
+
 impl BoardHelper {
     pub fn generate_white_pawn_masks() -> [u64; 64] {
         let mut masks = [0; 64];
@@ -32,6 +34,47 @@ impl BoardHelper {
             // Let binding required for reverse_bits
             let m: u64 = masks[i];
             masks[i] = m.reverse_bits();
+        }
+
+        masks
+    }
+
+    pub fn generate_knight_masks() -> [u64; 64] {
+        let mut masks = [0; 64];
+        let (mut rank, mut file): (usize, usize);
+        let (mut rank_diff, mut file_diff): (usize, usize);
+
+        for i in 0..64 {
+            rank = i / 8;
+            file = i % 8;
+
+            let mut mask: u64 = 0;
+
+            for offset in KNIGHT_MOVE_OFFSETS {
+                let target = i as i8 + offset;
+
+                // Prevent overflow
+                if target > 63 || target < 0 {
+                    continue;
+                }
+
+                rank_diff = rank.abs_diff((i as i8 + offset) as usize / 8);
+                file_diff = file.abs_diff((i as i8 + offset) as usize % 8);
+
+                // Prevent rank / file wrapping
+                if rank_diff > 2 || file_diff > 2 {
+                    continue;
+                }
+
+                let submask = 1 << i;
+                if offset > 0 {
+                    mask |= submask << offset.abs();
+                } else {
+                    mask |= submask >> offset.abs();
+                }
+            }
+
+            masks[i] = mask.reverse_bits();
         }
 
         masks
