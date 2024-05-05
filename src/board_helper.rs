@@ -47,14 +47,14 @@ impl BoardHelper {
         for i in 8..56 {
             mask = 0;
 
-            rank = i / 8;
-            file = i % 8;
+            rank = Self::rank(i);
+            file = Self::file(i);
 
-            if rank.abs_diff((i + 9) / 8) == 1 && file.abs_diff((i + 9) % 8) == 1 {
+            if Self::rank_difference(rank, i + 9) == 1 && Self::file_difference(file, i + 9) == 1 {
                 mask |= 1 << (i + 9);
             }
 
-            if rank.abs_diff((i + 7) / 8) == 1 && file.abs_diff((i + 7) % 8) == 1 {
+            if Self::rank_difference(rank, i + 7) == 1 && Self::file_difference(file, i + 7) == 1 {
                 mask |= 1 << (i + 7);
             }
 
@@ -72,14 +72,20 @@ impl BoardHelper {
         for i in 8..56 {
             mask = 0;
 
-            rank = i / 8;
-            file = i % 8;
+            rank = Self::rank(i);
+            file = Self::file(i);
 
-            if i >= 9 && rank.abs_diff((i - 9) / 8) == 1 && file.abs_diff((i - 9) % 8) == 1 {
+            if i >= 9
+                && Self::rank_difference(rank, i - 9) == 1
+                && Self::file_difference(file, i - 9) == 1
+            {
                 mask |= (1 << i) >> 9;
             }
 
-            if i >= 7 && rank.abs_diff((i - 7) / 8) == 1 && file.abs_diff((i - 7) % 8) == 1 {
+            if i >= 7
+                && Self::rank_difference(rank, i - 7) == 1
+                && Self::file_difference(file, i - 7) == 1
+            {
                 mask |= (1 << i) >> 7;
             }
 
@@ -96,8 +102,8 @@ impl BoardHelper {
         let mut mask: u64;
 
         for i in 0..64 {
-            rank = i / 8;
-            file = i % 8;
+            rank = Self::rank(i);
+            file = Self::file(i);
 
             mask = 0;
 
@@ -112,8 +118,8 @@ impl BoardHelper {
                 let shift_right = offset > 0;
                 let offset = offset.abs() as usize;
 
-                rank_diff = rank.abs_diff((i + offset) / 8);
-                file_diff = file.abs_diff((i + offset) % 8);
+                rank_diff = Self::rank_difference(rank, i + offset);
+                file_diff = Self::file_difference(file, i + offset);
 
                 // Prevent rank / file wrapping
                 if rank_diff > 2 || file_diff > 2 {
@@ -132,6 +138,22 @@ impl BoardHelper {
         }
 
         masks
+    }
+
+    pub fn rank(i: usize) -> usize {
+        i / 8
+    }
+
+    pub fn file(i: usize) -> usize {
+        i % 8
+    }
+
+    fn rank_difference(rank: usize, tile: usize) -> usize {
+        rank.abs_diff(tile / 8)
+    }
+
+    fn file_difference(file: usize, tile: usize) -> usize {
+        file.abs_diff(tile % 8)
     }
 
     pub fn piece_to_bitboard_index(piece: char) -> usize {

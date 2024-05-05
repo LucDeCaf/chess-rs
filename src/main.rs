@@ -1,5 +1,5 @@
 use chess::board_helper::BoardHelper;
-use std::ops::RangeInclusive;
+use std::{ops::RangeInclusive, thread, time::Duration};
 
 // Starting position
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -41,7 +41,7 @@ impl Board {
             white_pawn_move_masks: BoardHelper::generate_white_pawn_masks(),
             black_pawn_move_masks: BoardHelper::generate_black_pawn_masks(),
             white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
-            black_pawn_capture_masks: [0; 64],
+            black_pawn_capture_masks: BoardHelper::generate_black_pawn_capture_masks(),
             knight_masks: BoardHelper::generate_knight_masks(),
             bishop_masks: [0; 64],
             rook_masks: [0; 64],
@@ -150,20 +150,11 @@ impl Board {
 }
 
 fn main() {
-    let mut board = Board::new(START_FEN);
+    let board = Board::new(START_FEN);
 
-    let e4 = Move {
-        source: 12, // e2
-        target: 28, // e4
-    };
-    let e5 = Move {
-        source: 52, // e7
-        target: 36, // e5
-    };
-    let c5 = Move {
-        source: 50, // c7
-        target: 34, // c5
-    };
-
-    BoardHelper::print_mask(board.knight_masks[15]);
+    for i in 0..64 {
+        BoardHelper::print_mask(board.black_pawn_capture_masks[i]);
+        thread::sleep(Duration::from_millis(500));
+        println!("---------- {i}");
+    }
 }
