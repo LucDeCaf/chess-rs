@@ -39,27 +39,50 @@ impl BoardHelper {
         masks
     }
 
+    pub fn generate_white_pawn_capture_masks() -> [u64; 64] {
+        let mut masks = [0; 64];
+        let mut rank: usize;
+
+        for i in 8..56 {
+            rank = i / 8;
+            
+            if rank.abs_diff((i + 9) / 8) <= 1 {
+                masks[i] |= (i as u64) << 9;
+            }
+            
+            if rank.abs_diff((i + 7) / 8) <= 1 {
+                masks[i] |= (i as u64) << 7;
+            }
+        }
+
+        masks
+    }
+
     pub fn generate_knight_masks() -> [u64; 64] {
         let mut masks = [0; 64];
         let (mut rank, mut file): (usize, usize);
         let (mut rank_diff, mut file_diff): (usize, usize);
+        let mut mask: u64;
 
         for i in 0..64 {
             rank = i / 8;
             file = i % 8;
 
-            let mut mask: u64 = 0;
+            mask = 0;
 
             for offset in KNIGHT_MOVE_OFFSETS {
-                let target = i as i8 + offset;
+                let shift_right = offset > 0;
+                let offset = offset.abs() as usize;
+
+                let target = i + offset;
 
                 // Prevent overflow
                 if target > 63 || target < 0 {
                     continue;
                 }
 
-                rank_diff = rank.abs_diff((i as i8 + offset) as usize / 8);
-                file_diff = file.abs_diff((i as i8 + offset) as usize % 8);
+                rank_diff = rank.abs_diff((i + offset) / 8);
+                file_diff = file.abs_diff((i + offset) % 8);
 
                 // Prevent rank / file wrapping
                 if rank_diff > 2 || file_diff > 2 {
@@ -67,10 +90,10 @@ impl BoardHelper {
                 }
 
                 let submask = 1 << i;
-                if offset > 0 {
-                    mask |= submask << offset.abs();
+                if shift_right {
+                    mask |= submask >> offset;
                 } else {
-                    mask |= submask >> offset.abs();
+                    mask |= submask << offset;
                 }
             }
 

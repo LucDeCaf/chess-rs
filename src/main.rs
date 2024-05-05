@@ -40,7 +40,7 @@ impl Board {
             is_white_turn: true,
             white_pawn_move_masks: BoardHelper::generate_white_pawn_masks(),
             black_pawn_move_masks: BoardHelper::generate_black_pawn_masks(),
-            white_pawn_capture_masks: [0; 64],
+            white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
             black_pawn_capture_masks: [0; 64],
             knight_masks: BoardHelper::generate_knight_masks(),
             bishop_masks: [0; 64],
