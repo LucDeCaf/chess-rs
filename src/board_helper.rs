@@ -50,14 +50,6 @@ impl BoardHelper {
             rank = i / 8;
             file = i % 8;
 
-            if i == 47 {
-                println!(
-                    "rankdiff: {}\nfilediff: {}",
-                    rank.abs_diff((i + 7) / 8),
-                    file.abs_diff((i + 7) % 8)
-                );
-            }
-
             if rank.abs_diff((i + 9) / 8) == 1 && file.abs_diff((i + 9) % 8) == 1 {
                 mask |= 1 << (i + 9);
             }
@@ -74,19 +66,21 @@ impl BoardHelper {
 
     pub fn generate_black_pawn_capture_masks() -> [u64; 64] {
         let mut masks = [0; 64];
-        let mut rank: usize;
+        let (mut rank, mut file): (usize, usize);
         let mut mask: usize;
 
         for i in 8..56 {
             mask = 0;
-            rank = i / 8;
 
-            if rank.abs_diff((i - 9) / 8) <= 1 {
-                mask |= 1 << (i - 9);
+            rank = i / 8;
+            file = i % 8;
+
+            if i >= 9 && rank.abs_diff((i - 9) / 8) == 1 && file.abs_diff((i - 9) % 8) == 1 {
+                mask |= (1 << i) >> 9;
             }
 
-            if rank.abs_diff((i - 7) / 8) <= 1 {
-                mask |= 1 << (i - 7);
+            if i >= 7 && rank.abs_diff((i - 7) / 8) == 1 && file.abs_diff((i - 7) % 8) == 1 {
+                mask |= (1 << i) >> 7;
             }
 
             masks[i] = mask.reverse_bits() as u64;
