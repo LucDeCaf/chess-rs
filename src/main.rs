@@ -44,7 +44,7 @@ impl Board {
             black_pawn_capture_masks: BoardHelper::generate_black_pawn_capture_masks(),
             knight_masks: BoardHelper::generate_knight_masks(),
             bishop_masks: [0; 64],
-            rook_masks: [0; 64],
+            rook_masks: BoardHelper::generate_rook_masks(),
             queen_masks: [0; 64],
             king_masks: [0; 64],
         };
@@ -153,7 +153,7 @@ fn main() {
     let board = Board::new(START_FEN);
 
     for i in 0..64 {
-        BoardHelper::print_mask(board.black_pawn_capture_masks[i]);
+        BoardHelper::print_mask(board.rook_masks[i]);
         thread::sleep(Duration::from_millis(500));
         println!("---------- {i}");
     }
