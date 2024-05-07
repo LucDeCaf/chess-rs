@@ -14,10 +14,6 @@ impl BoardHelper {
             if i < 16 {
                 masks[i] |= 1 << (i + 16);
             }
-
-            // Let binding required for reverse_bits
-            let m: u64 = masks[i];
-            masks[i] = m.reverse_bits();
         }
 
         masks
@@ -32,10 +28,6 @@ impl BoardHelper {
             if i >= 48 {
                 masks[i] |= 1 << (i - 16);
             }
-
-            // Let binding required for reverse_bits
-            let m: u64 = masks[i];
-            masks[i] = m.reverse_bits();
         }
 
         masks
@@ -60,7 +52,7 @@ impl BoardHelper {
                 mask |= 1 << (i + 7);
             }
 
-            masks[i] = mask.reverse_bits() as u64;
+            masks[i] = mask as u64;
         }
 
         masks
@@ -68,7 +60,8 @@ impl BoardHelper {
 
     pub fn generate_black_pawn_capture_masks() -> [u64; 64] {
         let mut masks = [0; 64];
-        let (mut rank, mut file): (usize, usize);
+        let mut rank;
+        let mut file;
         let mut mask: usize;
 
         for i in 8..56 {
@@ -91,7 +84,7 @@ impl BoardHelper {
                 mask |= (1 << i) >> 7;
             }
 
-            masks[i] = mask.reverse_bits() as u64;
+            masks[i] = mask as u64;
         }
 
         masks
@@ -99,8 +92,6 @@ impl BoardHelper {
 
     pub fn generate_rook_masks() -> [u64; 64] {
         let mut masks = [0; 64];
-
-        println!("start");
 
         for start in 0..64 {
             for offset in ROOK_MOVE_OFFSETS {
@@ -129,8 +120,6 @@ impl BoardHelper {
 
     pub fn generate_bishop_masks() -> [u64; 64] {
         let mut masks = [0; 64];
-
-        println!("start");
 
         for start in 0..64 {
             for offset in BISHOP_MOVE_OFFSETS {
@@ -196,7 +185,7 @@ impl BoardHelper {
                 }
             }
 
-            masks[i] = mask.reverse_bits();
+            masks[i] = mask;
         }
 
         masks
@@ -241,7 +230,7 @@ impl BoardHelper {
     }
 
     pub fn print_mask(mask: u64) {
-        let string_mask = format!("{:064b}", mask);
+        let string_mask = format!("{:064b}", mask.reverse_bits());
         let mut lines = [""; 8];
 
         let mut i = 7;

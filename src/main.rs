@@ -7,7 +7,7 @@ const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 
 const WHITE_PIECE_MASK_INDEXES: RangeInclusive<usize> = 0..=5;
 const BLACK_PIECE_MASK_INDEXES: RangeInclusive<usize> = 6..=11;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Colour {
     White,
     Black,
@@ -23,7 +23,7 @@ enum Piece {
     King(Colour),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Square {
     A1,
     A2,
@@ -109,13 +109,25 @@ struct Board {
     king_masks: [u64; 64],
 }
 
+#[derive(Debug, Clone, Copy)]
 struct Move {
-    source: u8,
-    target: u8,
+    source: Square,
+    target: Square,
 }
 
 impl Board {
     fn new(fen: &str) -> Self {
+        // Use rook and bishop masks to generate queen masks
+        let bishop_masks = BoardHelper::generate_bishop_masks();
+        let rook_masks = BoardHelper::generate_rook_masks();
+
+        let mut i = 0;
+        let queen_masks = bishop_masks.map(|bishop_mask| {
+            let queen_mask = bishop_mask | rook_masks[i];
+            i += 1;
+            queen_mask
+        });
+
         let mut board = Board {
             bitboards: vec![
                 0, 0, 0, 0, 0, 0, // White pieces
@@ -128,9 +140,9 @@ impl Board {
             white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
             black_pawn_capture_masks: BoardHelper::generate_black_pawn_capture_masks(),
             knight_masks: BoardHelper::generate_knight_masks(),
-            bishop_masks: BoardHelper::generate_bishop_masks(),
-            rook_masks: BoardHelper::generate_rook_masks(),
-            queen_masks: [0; 64],
+            bishop_masks,
+            rook_masks,
+            queen_masks,
             king_masks: [0; 64],
         };
         board.load_from_fen(fen);
@@ -190,8 +202,8 @@ impl Board {
         };
 
         // Start with 1 all the way on the left, then adjust from there
-        let start_mask = 1 << 63 >> mv.source;
-        let target_mask = 1 << 63 >> mv.target;
+        let start_mask = 1 << 63 >> mv.source as u64;
+        let target_mask = 1 << 63 >> mv.target as u64;
 
         for i in start_mask_indices {
             if self.bitboards[i] & start_mask == start_mask {
@@ -240,6 +252,6 @@ fn main() {
     for i in 0..64 {
         BoardHelper::print_mask(board.bishop_masks[i]);
         println!("---------- {i}");
-        thread::sleep(Duration::from_millis(500));
+        thread::sleep(Duration::from_millis(1000));
     }
 }
