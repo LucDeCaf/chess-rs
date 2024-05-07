@@ -122,12 +122,13 @@ impl Board {
                 0, 0, 0, 0, 0, 0, // Black pieces
             ],
             is_white_turn: true,
+
             white_pawn_move_masks: BoardHelper::generate_white_pawn_masks(),
             black_pawn_move_masks: BoardHelper::generate_black_pawn_masks(),
             white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
             black_pawn_capture_masks: BoardHelper::generate_black_pawn_capture_masks(),
             knight_masks: BoardHelper::generate_knight_masks(),
-            bishop_masks: [0; 64],
+            bishop_masks: BoardHelper::generate_bishop_masks(),
             rook_masks: BoardHelper::generate_rook_masks(),
             queen_masks: [0; 64],
             king_masks: [0; 64],
@@ -237,8 +238,8 @@ fn main() {
     let board = Board::new(START_FEN);
 
     for i in 0..64 {
-        BoardHelper::print_mask(board.rook_masks[i]);
-        thread::sleep(Duration::from_millis(500));
+        BoardHelper::print_mask(board.bishop_masks[i]);
         println!("---------- {i}");
+        thread::sleep(Duration::from_millis(500));
     }
 }

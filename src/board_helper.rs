@@ -127,6 +127,36 @@ impl BoardHelper {
         masks
     }
 
+    pub fn generate_bishop_masks() -> [u64; 64] {
+        let mut masks = [0; 64];
+
+        println!("start");
+
+        for start in 0..64 {
+            for offset in BISHOP_MOVE_OFFSETS {
+                let mut target = start as i8 + offset;
+                let mut prev_rank = Self::rank(start as usize);
+                let mut prev_file = Self::file(start as usize);
+
+                while target >= 0 && target < 64 {
+                    if Self::rank_difference(prev_rank, target as usize) > 1
+                        || Self::file_difference(prev_file, target as usize) > 1
+                    {
+                        break;
+                    }
+
+                    prev_rank = Self::rank(target as usize);
+                    prev_file = Self::file(target as usize);
+
+                    masks[start] |= 1 << target;
+                    target += offset;
+                }
+            }
+        }
+
+        masks
+    }
+
     pub fn generate_knight_masks() -> [u64; 64] {
         let mut masks = [0; 64];
         let (mut rank, mut file): (usize, usize);
