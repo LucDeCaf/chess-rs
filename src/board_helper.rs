@@ -180,6 +180,35 @@ impl BoardHelper {
         masks
     }
 
+    pub fn generate_king_move_masks() -> [u64; 64] {
+        let mut masks = [0; 64];
+
+        for start in 0..64 {
+            let rank = Self::rank(start);
+            let file = Self::file(start);
+
+            for offset_set in [ROOK_MOVE_OFFSETS, BISHOP_MOVE_OFFSETS] {
+                for offset in offset_set {
+                    let target = start as i8 + offset;
+    
+                    if target < 0 || target > 63 {
+                        continue;
+                    }
+
+                    let target = target as usize;
+
+                    if Self::rank_difference(rank, target) > 1 || Self::file_difference(file, target) > 1 {
+                        continue;
+                    }
+    
+                    masks[start] |= 1 << target;
+                }
+            }
+        }
+
+        masks
+    }
+
     pub fn rank(i: usize) -> usize {
         i / 8
     }

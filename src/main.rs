@@ -11,7 +11,7 @@ fn main() {
 
     // Cycle through all positions of a bitboard
     for i in 0..64 {
-        BoardHelper::print_mask(board.knight_move_masks[i]);
+        BoardHelper::print_mask(board.king_move_masks[i]);
         println!("---------- {:?}", Square::from_usize(i).unwrap());
         thread::sleep(Duration::from_millis(100));
     }

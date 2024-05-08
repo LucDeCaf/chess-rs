@@ -72,7 +72,7 @@ impl Board {
             bishop_move_masks,
             rook_move_masks,
             queen_move_masks,
-            king_move_masks: [0; 64],
+            king_move_masks: BoardHelper::generate_king_move_masks(),
         };
         board.load_from_fen(fen);
         board
