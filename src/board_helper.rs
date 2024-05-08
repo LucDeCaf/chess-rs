@@ -148,44 +148,33 @@ impl BoardHelper {
 
     pub fn generate_knight_masks() -> [u64; 64] {
         let mut masks = [0; 64];
-        let (mut rank, mut file): (usize, usize);
-        let (mut rank_diff, mut file_diff): (usize, usize);
-        let mut mask: u64;
 
-        for i in 0..64 {
-            rank = Self::rank(i);
-            file = Self::file(i);
-
-            mask = 0;
+        for start in 0..64 {
+            let rank = Self::rank(start);
+            let file = Self::file(start);
 
             for offset in KNIGHT_MOVE_OFFSETS {
-                let target = (i as i8) + offset;
+                let target = start as i8 + offset;
 
-                // Prevent overflow
-                if target > 63 || target < 0 {
+                if start == 0 {
+                    println!("target: {target}");
+                }
+
+                if target < 0 || target > 63 {
                     continue;
                 }
 
-                let shift_right = offset > 0;
-                let offset = offset.abs() as usize;
+                let target = target as usize;
 
-                rank_diff = Self::rank_difference(rank, i + offset);
-                file_diff = Self::file_difference(file, i + offset);
+                let rank_diff = Self::rank_difference(rank, target);
+                let file_diff = Self::file_difference(file, target);
 
-                // Prevent rank / file wrapping
-                if rank_diff > 2 || file_diff > 2 {
+                if !(rank_diff == 1 && file_diff == 2 || rank_diff == 2 && file_diff == 1) {
                     continue;
                 }
 
-                let submask = 1 << i;
-                if shift_right {
-                    mask |= submask >> offset;
-                } else {
-                    mask |= submask << offset;
-                }
+                masks[start] |= 1 << target;
             }
-
-            masks[i] = mask;
         }
 
         masks

@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use chess::board::Board;
+use chess::board::{Board, Square};
 use chess::board_helper::BoardHelper;
 
 // Starting position
@@ -11,8 +11,8 @@ fn main() {
 
     // Cycle through all positions of a bitboard
     for i in 0..64 {
-        BoardHelper::print_mask(board.bishop_masks[i]);
-        println!("---------- {i}");
-        thread::sleep(Duration::from_millis(1000));
+        BoardHelper::print_mask(board.knight_masks[i]);
+        println!("---------- {:?}", Square::from_usize(i).unwrap());
+        thread::sleep(Duration::from_millis(100));
     }
 }
