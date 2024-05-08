@@ -7,7 +7,8 @@ use chess::board_helper::BoardHelper;
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 fn main() {
-    let board = Board::new(START_FEN);
+    let mut board = Board::new();
+    board.load_from_fen(START_FEN);
 
     // Cycle through all positions of a bitboard
     for i in 0..64 {

@@ -45,7 +45,7 @@ pub struct Move {
 }
 
 impl Board {
-    pub fn new(fen: &str) -> Self {
+    pub fn new() -> Self {
         // Use rook and bishop masks to generate queen masks
         let bishop_move_masks = BoardHelper::generate_bishop_move_masks();
         let rook_move_masks = BoardHelper::generate_rook_move_masks();
@@ -57,7 +57,7 @@ impl Board {
             queen_mask
         });
 
-        let mut board = Board {
+        let board = Board {
             bitboards: vec![
                 0, 0, 0, 0, 0, 0, // White pieces
                 0, 0, 0, 0, 0, 0, // Black pieces
@@ -74,7 +74,7 @@ impl Board {
             queen_move_masks,
             king_move_masks: BoardHelper::generate_king_move_masks(),
         };
-        board.load_from_fen(fen);
+        
         board
     }
 
