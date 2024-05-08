@@ -9,6 +9,7 @@ const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 
 fn main() {
     let board = Board::new(START_FEN);
 
+    // Cycle through all positions of a bitboard
     for i in 0..64 {
         BoardHelper::print_mask(board.bishop_masks[i]);
         println!("---------- {i}");

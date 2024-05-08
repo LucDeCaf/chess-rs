@@ -1,5 +1,5 @@
-use std::ops::RangeInclusive;
 use crate::board_helper::BoardHelper;
+use std::ops::RangeInclusive;
 
 const WHITE_PIECE_MASK_INDEXES: RangeInclusive<usize> = 0..=5;
 const BLACK_PIECE_MASK_INDEXES: RangeInclusive<usize> = 6..=11;
@@ -18,81 +18,6 @@ pub enum Piece {
     Rook(Color),
     Queen(Color),
     King(Color),
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Square {
-    A1,
-    B1,
-    C1,
-    D1,
-    E1,
-    F1,
-    G1,
-    H1,
-    
-    A2,
-    B2,
-    C2,
-    D2,
-    E2,
-    F2,
-    G2,
-    H2,
-    
-    A3,
-    B3,
-    C3,
-    D3,
-    E3,
-    F3,
-    G3,
-    H3,
-    
-    A4,
-    B4,
-    C4,
-    D4,
-    E4,
-    F4,
-    G4,
-    H4,
-    
-    A5,
-    B5,
-    C5,
-    D5,
-    E5,
-    F5,
-    G5,
-    H5,
-    
-    A6,
-    B6,
-    C6,
-    D6,
-    E6,
-    F6,
-    G6,
-    H6,
-    
-    A7,
-    B7,
-    C7,
-    D7,
-    E7,
-    F7,
-    G7,
-    H7,
-    
-    A8,
-    B8,
-    C8,
-    D8,
-    E8,
-    F8,
-    G8,
-    H8,
 }
 
 #[derive(Debug)]
@@ -247,5 +172,177 @@ impl Board {
         }
 
         board_mask
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Square {
+    A1,
+    B1,
+    C1,
+    D1,
+    E1,
+    F1,
+    G1,
+    H1,
+    A2,
+    B2,
+    C2,
+    D2,
+    E2,
+    F2,
+    G2,
+    H2,
+    A3,
+    B3,
+    C3,
+    D3,
+    E3,
+    F3,
+    G3,
+    H3,
+    A4,
+    B4,
+    C4,
+    D4,
+    E4,
+    F4,
+    G4,
+    H4,
+    A5,
+    B5,
+    C5,
+    D5,
+    E5,
+    F5,
+    G5,
+    H5,
+    A6,
+    B6,
+    C6,
+    D6,
+    E6,
+    F6,
+    G6,
+    H6,
+    A7,
+    B7,
+    C7,
+    D7,
+    E7,
+    F7,
+    G7,
+    H7,
+    A8,
+    B8,
+    C8,
+    D8,
+    E8,
+    F8,
+    G8,
+    H8,
+}
+
+impl Square {
+    pub fn from_u8(val: u8) -> Option<Self> {
+        match val {
+            0 => Some(Self::A1),
+            1 => Some(Self::B1),
+            2 => Some(Self::C1),
+            3 => Some(Self::D1),
+            4 => Some(Self::E1),
+            5 => Some(Self::F1),
+            6 => Some(Self::G1),
+            7 => Some(Self::H1),
+            8 => Some(Self::A2),
+            9 => Some(Self::B2),
+            10 => Some(Self::C2),
+            11 => Some(Self::D2),
+            12 => Some(Self::E2),
+            13 => Some(Self::F2),
+            14 => Some(Self::G2),
+            15 => Some(Self::H2),
+            16 => Some(Self::A3),
+            17 => Some(Self::B3),
+            18 => Some(Self::C3),
+            19 => Some(Self::D3),
+            20 => Some(Self::E3),
+            21 => Some(Self::F3),
+            22 => Some(Self::G3),
+            23 => Some(Self::H3),
+            24 => Some(Self::A4),
+            25 => Some(Self::B4),
+            26 => Some(Self::C4),
+            27 => Some(Self::D4),
+            28 => Some(Self::E4),
+            29 => Some(Self::F4),
+            30 => Some(Self::G4),
+            31 => Some(Self::H4),
+            32 => Some(Self::A5),
+            33 => Some(Self::B5),
+            34 => Some(Self::C5),
+            35 => Some(Self::D5),
+            36 => Some(Self::E5),
+            37 => Some(Self::F5),
+            38 => Some(Self::G5),
+            39 => Some(Self::H5),
+            40 => Some(Self::A6),
+            41 => Some(Self::B6),
+            42 => Some(Self::C6),
+            43 => Some(Self::D6),
+            44 => Some(Self::E6),
+            45 => Some(Self::F6),
+            46 => Some(Self::G6),
+            47 => Some(Self::H6),
+            48 => Some(Self::A7),
+            49 => Some(Self::B7),
+            50 => Some(Self::C7),
+            51 => Some(Self::D7),
+            52 => Some(Self::E7),
+            53 => Some(Self::F7),
+            54 => Some(Self::G7),
+            55 => Some(Self::H7),
+            56 => Some(Self::A8),
+            57 => Some(Self::B8),
+            58 => Some(Self::C8),
+            59 => Some(Self::D8),
+            60 => Some(Self::E8),
+            61 => Some(Self::F8),
+            62 => Some(Self::G8),
+            63 => Some(Self::H8),
+            _ => None,
+        }
+    }
+
+    pub fn from_u16(val: u16) -> Option<Self> {
+        if val > u8::MAX as u16 {
+            return None;
+        }
+
+        Self::from_u8(val as u8)
+    }
+
+    pub fn from_u32(val: u32) -> Option<Self> {
+        if val > u8::MAX as u32 {
+            return None;
+        }
+
+        Self::from_u8(val as u8)
+    }
+
+    pub fn from_u64(val: u64) -> Option<Self> {
+        if val > u8::MAX as u64 {
+            return None;
+        }
+
+        Self::from_u8(val as u8)
+    }
+
+    pub fn from_usize(val: usize) -> Option<Self> {
+        if val > u8::MAX as usize {
+            return None;
+        }
+
+        Self::from_u8(val as u8)
     }
 }
