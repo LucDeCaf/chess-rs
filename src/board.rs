@@ -31,11 +31,11 @@ pub struct Board {
     pub black_pawn_move_masks: [u64; 64],
     pub white_pawn_capture_masks: [u64; 64],
     pub black_pawn_capture_masks: [u64; 64],
-    pub knight_masks: [u64; 64],
-    pub bishop_masks: [u64; 64],
-    pub rook_masks: [u64; 64],
-    pub queen_masks: [u64; 64], // queen_masks[i] == rook_masks[i] | bishop_masks[i]
-    pub king_masks: [u64; 64],
+    pub knight_move_masks: [u64; 64],
+    pub bishop_move_masks: [u64; 64],
+    pub rook_move_masks: [u64; 64],
+    pub queen_move_masks: [u64; 64], // queen_move_masks[i] == rook_move_masks[i] | bishop_move_masks[i]
+    pub king_move_masks: [u64; 64],
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -47,12 +47,12 @@ pub struct Move {
 impl Board {
     pub fn new(fen: &str) -> Self {
         // Use rook and bishop masks to generate queen masks
-        let bishop_masks = BoardHelper::generate_bishop_masks();
-        let rook_masks = BoardHelper::generate_rook_masks();
+        let bishop_move_masks = BoardHelper::generate_bishop_move_masks();
+        let rook_move_masks = BoardHelper::generate_rook_move_masks();
 
         let mut i = 0;
-        let queen_masks = bishop_masks.map(|bishop_mask| {
-            let queen_mask = bishop_mask | rook_masks[i];
+        let queen_move_masks = bishop_move_masks.map(|bishop_mask| {
+            let queen_mask = bishop_mask | rook_move_masks[i];
             i += 1;
             queen_mask
         });
@@ -64,15 +64,15 @@ impl Board {
             ],
             is_white_turn: true,
 
-            white_pawn_move_masks: BoardHelper::generate_white_pawn_masks(),
-            black_pawn_move_masks: BoardHelper::generate_black_pawn_masks(),
+            white_pawn_move_masks: BoardHelper::generate_white_pawn_move_masks(),
+            black_pawn_move_masks: BoardHelper::generate_black_pawn_move_masks(),
             white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
             black_pawn_capture_masks: BoardHelper::generate_black_pawn_capture_masks(),
-            knight_masks: BoardHelper::generate_knight_masks(),
-            bishop_masks,
-            rook_masks,
-            queen_masks,
-            king_masks: [0; 64],
+            knight_move_masks: BoardHelper::generate_knight_move_masks(),
+            bishop_move_masks,
+            rook_move_masks,
+            queen_move_masks,
+            king_move_masks: [0; 64],
         };
         board.load_from_fen(fen);
         board

@@ -5,7 +5,7 @@ const BISHOP_MOVE_OFFSETS: [i8; 4] = [7, 9, -7, -9];
 const ROOK_MOVE_OFFSETS: [i8; 4] = [8, 1, -8, -1];
 
 impl BoardHelper {
-    pub fn generate_white_pawn_masks() -> [u64; 64] {
+    pub fn generate_white_pawn_move_masks() -> [u64; 64] {
         let mut masks = [0; 64];
 
         for i in 8..56 {
@@ -19,7 +19,7 @@ impl BoardHelper {
         masks
     }
 
-    pub fn generate_black_pawn_masks() -> [u64; 64] {
+    pub fn generate_black_pawn_move_masks() -> [u64; 64] {
         let mut masks = [0; 64];
 
         for i in 8..56 {
@@ -90,7 +90,7 @@ impl BoardHelper {
         masks
     }
 
-    pub fn generate_rook_masks() -> [u64; 64] {
+    pub fn generate_rook_move_masks() -> [u64; 64] {
         let mut masks = [0; 64];
 
         for start in 0..64 {
@@ -118,7 +118,7 @@ impl BoardHelper {
         masks
     }
 
-    pub fn generate_bishop_masks() -> [u64; 64] {
+    pub fn generate_bishop_move_masks() -> [u64; 64] {
         let mut masks = [0; 64];
 
         for start in 0..64 {
@@ -146,7 +146,7 @@ impl BoardHelper {
         masks
     }
 
-    pub fn generate_knight_masks() -> [u64; 64] {
+    pub fn generate_knight_move_masks() -> [u64; 64] {
         let mut masks = [0; 64];
 
         for start in 0..64 {
