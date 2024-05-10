@@ -43,7 +43,10 @@ fn process_command(command: &Command, board: &mut Board) -> String {
             }
             "".to_owned()
         }
-        Command::Go => "bestmove 0000".to_owned(),
+        Command::Go => {
+            
+            "".to_owned()
+        }
         Command::Quit => "".to_owned(),
         Command::Invalid => "".to_owned(),
     }

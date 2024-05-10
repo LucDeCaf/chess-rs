@@ -16,6 +16,20 @@ pub enum Piece {
     King(Color),
 }
 
+impl Piece {
+    pub fn color(&self) -> Color {
+        match self {
+            Self::Pawn(color)
+            | Self::Knight(color) 
+            | Self::Bishop(color) 
+            | Self::Rook(color) 
+            | Self::Queen(color) 
+            | Self::King(color) 
+                => *color,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Bitboard {
     mask: u64,
@@ -188,8 +202,13 @@ impl Board {
     }
 
     pub fn make_move(&mut self, mv: &Move) {
-        // Find piece
-        let piece = self.piece_at_square_mut(mv.from);
+        // Find pieces
+        let from_piece = self.piece_at_square_mut(mv.from).unwrap();
+        let from_bitboard = self.pieces_mut(from_piece);
+        let to_piece = self.piece_at_square_mut(mv.to).unwrap();
+        let to_bitboard = self.pieces_mut(to_piece);
+
+
     }
 
     pub fn unmake_move(&mut self, mv: &Move) {
