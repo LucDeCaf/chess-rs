@@ -156,10 +156,6 @@ impl BoardHelper {
             for offset in KNIGHT_MOVE_OFFSETS {
                 let target = start as i8 + offset;
 
-                if start == 0 {
-                    println!("target: {target}");
-                }
-
                 if target < 0 || target > 63 {
                     continue;
                 }

@@ -20,6 +20,21 @@ pub enum Piece {
     King(Color),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Move {
+    pub source: Square,
+    pub target: Square,
+}
+
+impl Move {
+    pub fn from_long_algebraic(input: &str) -> Option<Self> {
+        Some(Self {
+            source: Square::from_str(&input[..2])?,
+            target: Square::from_str(&input[2..])?,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct Board {
     // Game data
@@ -36,12 +51,6 @@ pub struct Board {
     pub rook_move_masks: [u64; 64],
     pub queen_move_masks: [u64; 64], // queen_move_masks[i] == rook_move_masks[i] | bishop_move_masks[i]
     pub king_move_masks: [u64; 64],
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Move {
-    source: Square,
-    target: Square,
 }
 
 impl Board {
@@ -74,7 +83,7 @@ impl Board {
             queen_move_masks,
             king_move_masks: BoardHelper::generate_king_move_masks(),
         };
-        
+
         board
     }
 
@@ -344,5 +353,75 @@ impl Square {
         }
 
         Self::from_u8(val as u8)
+    }
+
+    pub fn from_str(input: &str) -> Option<Self> {
+        match input {
+            "a1" => Some(Square::A1),
+            "b1" => Some(Square::B1),
+            "c1" => Some(Square::C1),
+            "d1" => Some(Square::D1),
+            "e1" => Some(Square::E1),
+            "f1" => Some(Square::F1),
+            "g1" => Some(Square::G1),
+            "h1" => Some(Square::H1),
+            "a2" => Some(Square::A2),
+            "b2" => Some(Square::B2),
+            "c2" => Some(Square::C2),
+            "d2" => Some(Square::D2),
+            "e2" => Some(Square::E2),
+            "f2" => Some(Square::F2),
+            "g2" => Some(Square::G2),
+            "h2" => Some(Square::H2),
+            "a3" => Some(Square::A3),
+            "b3" => Some(Square::B3),
+            "c3" => Some(Square::C3),
+            "d3" => Some(Square::D3),
+            "e3" => Some(Square::E3),
+            "f3" => Some(Square::F3),
+            "g3" => Some(Square::G3),
+            "h3" => Some(Square::H3),
+            "a4" => Some(Square::A4),
+            "b4" => Some(Square::B4),
+            "c4" => Some(Square::C4),
+            "d4" => Some(Square::D4),
+            "e4" => Some(Square::E4),
+            "f4" => Some(Square::F4),
+            "g4" => Some(Square::G4),
+            "h4" => Some(Square::H4),
+            "a5" => Some(Square::A5),
+            "b5" => Some(Square::B5),
+            "c5" => Some(Square::C5),
+            "d5" => Some(Square::D5),
+            "e5" => Some(Square::E5),
+            "f5" => Some(Square::F5),
+            "g5" => Some(Square::G5),
+            "h5" => Some(Square::H5),
+            "a6" => Some(Square::A6),
+            "b6" => Some(Square::B6),
+            "c6" => Some(Square::C6),
+            "d6" => Some(Square::D6),
+            "e6" => Some(Square::E6),
+            "f6" => Some(Square::F6),
+            "g6" => Some(Square::G6),
+            "h6" => Some(Square::H6),
+            "a7" => Some(Square::A7),
+            "b7" => Some(Square::B7),
+            "c7" => Some(Square::C7),
+            "d7" => Some(Square::D7),
+            "e7" => Some(Square::E7),
+            "f7" => Some(Square::F7),
+            "g7" => Some(Square::G7),
+            "h7" => Some(Square::H7),
+            "a8" => Some(Square::A8),
+            "b8" => Some(Square::B8),
+            "c8" => Some(Square::C8),
+            "d8" => Some(Square::D8),
+            "e8" => Some(Square::E8),
+            "f8" => Some(Square::F8),
+            "g8" => Some(Square::G8),
+            "h8" => Some(Square::H8),
+            _ => None,
+        }
     }
 }
