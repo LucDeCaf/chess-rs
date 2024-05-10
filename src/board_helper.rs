@@ -1,3 +1,5 @@
+use crate::board::{Color, Piece};
+
 pub struct BoardHelper;
 
 const KNIGHT_MOVE_OFFSETS: [i8; 8] = [15, 17, 6, 10, -10, -6, -17, -15];
@@ -186,23 +188,43 @@ impl BoardHelper {
             for offset_set in [ROOK_MOVE_OFFSETS, BISHOP_MOVE_OFFSETS] {
                 for offset in offset_set {
                     let target = start as i8 + offset;
-    
+
                     if target < 0 || target > 63 {
                         continue;
                     }
 
                     let target = target as usize;
 
-                    if Self::rank_difference(rank, target) > 1 || Self::file_difference(file, target) > 1 {
+                    if Self::rank_difference(rank, target) > 1
+                        || Self::file_difference(file, target) > 1
+                    {
                         continue;
                     }
-    
+
                     masks[start] |= 1 << target;
                 }
             }
         }
 
         masks
+    }
+
+    pub fn char_to_piece(ch: char) -> Option<Piece> {
+        match ch {
+            'P' => Some(Piece::Pawn(Color::White)),
+            'N' => Some(Piece::Knight(Color::White)),
+            'B' => Some(Piece::Bishop(Color::White)),
+            'R' => Some(Piece::Rook(Color::White)),
+            'Q' => Some(Piece::Queen(Color::White)),
+            'K' => Some(Piece::King(Color::White)),
+            'p' => Some(Piece::Pawn(Color::Black)),
+            'n' => Some(Piece::Knight(Color::Black)),
+            'b' => Some(Piece::Bishop(Color::Black)),
+            'r' => Some(Piece::Rook(Color::Black)),
+            'q' => Some(Piece::Queen(Color::Black)),
+            'k' => Some(Piece::King(Color::Black)),
+            _ => None,
+        }
     }
 
     pub fn rank(i: usize) -> usize {

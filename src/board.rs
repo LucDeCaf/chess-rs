@@ -1,8 +1,4 @@
 use crate::board_helper::BoardHelper;
-use std::ops::RangeInclusive;
-
-const WHITE_PIECE_MASK_INDEXES: RangeInclusive<usize> = 0..=5;
-const BLACK_PIECE_MASK_INDEXES: RangeInclusive<usize> = 6..=11;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Color {
@@ -10,7 +6,7 @@ pub enum Color {
     Black,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Piece {
     Pawn(Color),
     Knight(Color),
@@ -20,17 +16,23 @@ pub enum Piece {
     King(Color),
 }
 
+#[derive(Debug)]
+pub struct Bitboard {
+    mask: u64,
+    piece: Piece,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Move {
-    pub source: Square,
-    pub target: Square,
+    pub to: Square,
+    pub from: Square,
 }
 
 impl Move {
     pub fn from_long_algebraic(input: &str) -> Option<Self> {
         Some(Self {
-            source: Square::from_str(&input[..2])?,
-            target: Square::from_str(&input[2..])?,
+            from: Square::from_str(&input[..2])?,
+            to: Square::from_str(&input[2..])?,
         })
     }
 }
@@ -38,8 +40,23 @@ impl Move {
 #[derive(Debug)]
 pub struct Board {
     // Game data
-    pub bitboards: Vec<u64>,
     pub is_white_turn: bool,
+
+    // White pieces
+    pub white_pawns: Bitboard,
+    pub white_knights: Bitboard,
+    pub white_bishops: Bitboard,
+    pub white_rooks: Bitboard,
+    pub white_queens: Bitboard,
+    pub white_kings: Bitboard,
+
+    // Black pieces
+    pub black_pawns: Bitboard,
+    pub black_knights: Bitboard,
+    pub black_bishops: Bitboard,
+    pub black_rooks: Bitboard,
+    pub black_queens: Bitboard,
+    pub black_kings: Bitboard,
 
     // Piece move tables (to be optimised)
     pub white_pawn_move_masks: [u64; 64],
@@ -67,11 +84,20 @@ impl Board {
         });
 
         let board = Board {
-            bitboards: vec![
-                0, 0, 0, 0, 0, 0, // White pieces
-                0, 0, 0, 0, 0, 0, // Black pieces
-            ],
             is_white_turn: true,
+
+            white_pawns: Bitboard { mask: 0, piece: Piece::Pawn(Color::White)},
+            white_knights: Bitboard { mask: 0, piece: Piece::Knight(Color::White)},
+            white_bishops: Bitboard { mask: 0, piece: Piece::Bishop(Color::White)},
+            white_rooks: Bitboard { mask: 0, piece: Piece::Rook(Color::White)},
+            white_queens: Bitboard { mask: 0, piece: Piece::Queen(Color::White)},
+            white_kings: Bitboard { mask: 0, piece: Piece::King(Color::White)},
+            black_pawns: Bitboard { mask: 0, piece: Piece::Pawn(Color::Black)},
+            black_knights: Bitboard { mask: 0, piece: Piece::Knight(Color::Black)},
+            black_bishops: Bitboard { mask: 0, piece: Piece::Bishop(Color::Black)},
+            black_rooks: Bitboard { mask: 0, piece: Piece::Rook(Color::Black)},
+            black_queens: Bitboard { mask: 0, piece: Piece::Queen(Color::Black)},
+            black_kings: Bitboard { mask: 0, piece: Piece::King(Color::Black)},
 
             white_pawn_move_masks: BoardHelper::generate_white_pawn_move_masks(),
             black_pawn_move_masks: BoardHelper::generate_black_pawn_move_masks(),
@@ -89,9 +115,7 @@ impl Board {
 
     pub fn load_from_fen(&mut self, fen: &str) {
         // Reset bitboards
-        for board in self.bitboards.iter_mut() {
-            *board = 0;
-        }
+        self.clear_pieces();
 
         // Get segments
         let mut segments = fen.split(' ');
@@ -115,8 +139,9 @@ impl Board {
 
                 // Add piece
                 'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
-                    let board_index = BoardHelper::piece_to_bitboard_index(ch);
-                    self.bitboards[board_index] |= 1 << current_pos;
+                    let piece_type = BoardHelper::char_to_piece(ch).unwrap();
+                    let bitboard = self.pieces_mut(piece_type);
+                    bitboard.mask |= 1 << current_pos;
                     current_pos += 1;
                 }
 
@@ -133,39 +158,44 @@ impl Board {
         };
     }
 
+    pub fn pieces_mut<'a>(&'a mut self, piece: Piece) -> &'a mut Bitboard {
+        match piece {
+            Piece::Pawn(color) => match color {
+                Color::White => &mut self.white_pawns,
+                Color::Black => &mut self.black_pawns,
+            },
+            Piece::Knight(color) => match color {
+                Color::White => &mut self.white_knights,
+                Color::Black => &mut self.black_knights,
+            },
+            Piece::Bishop(color) => match color {
+                Color::White => &mut self.white_bishops,
+                Color::Black => &mut self.black_bishops,
+            },
+            Piece::Rook(color) => match color {
+                Color::White => &mut self.white_rooks,
+                Color::Black => &mut self.black_rooks,
+            },
+            Piece::Queen(color) => match color {
+                Color::White => &mut self.white_queens,
+                Color::Black => &mut self.black_queens,
+            },
+            Piece::King(color) => match color {
+                Color::White => &mut self.white_kings,
+                Color::Black => &mut self.black_kings,
+            },
+        }
+    }
+
     pub fn make_move(&mut self, mv: &Move) {
-        let (start_mask_indices, target_mask_indices) = match self.is_white_turn {
-            true => (WHITE_PIECE_MASK_INDEXES, BLACK_PIECE_MASK_INDEXES),
-            false => (BLACK_PIECE_MASK_INDEXES, WHITE_PIECE_MASK_INDEXES),
-        };
-
-        // Start with 1 all the way on the left, then adjust from there
-        let start_mask = 1 << 63 >> mv.source as u64;
-        let target_mask = 1 << 63 >> mv.target as u64;
-
-        for i in start_mask_indices {
-            if self.bitboards[i] & start_mask == start_mask {
-                // If current mask == mask of moved piece, remove the piece from its current
-                // square and replace it on the correct one
-                self.bitboards[i] &= !start_mask;
-                self.bitboards[i] |= target_mask;
-            }
-        }
-
-        // Capture enemy pieces if there
-        for i in target_mask_indices {
-            // Remove any enemy pieces found on the target
-            self.bitboards[i] &= !target_mask;
-        }
-
-        // Swap turns
-        self.is_white_turn = !self.is_white_turn;
+        // Find piece
+        let piece = self.piece_at_square_mut(mv.from);
     }
 
     pub fn unmake_move(&mut self, mv: &Move) {
         let reverse_move = Move {
-            source: mv.target,
-            target: mv.source,
+            from: mv.to,
+            to: mv.from,
         };
 
         self.is_white_turn = !self.is_white_turn;
@@ -173,14 +203,86 @@ impl Board {
         self.is_white_turn = !self.is_white_turn;
     }
 
-    pub fn pieces_mask(&self) -> u64 {
-        let mut board_mask: u64 = 0;
+    pub fn piece_bitboards<'a>(&'a self) -> [&'a Bitboard; 12] {
+        [
+            &self.white_pawns,
+            &self.white_knights,
+            &self.white_bishops,
+            &self.white_rooks,
+            &self.white_queens,
+            &self.white_kings,
+            &self.black_pawns,
+            &self.black_knights,
+            &self.black_bishops,
+            &self.black_rooks,
+            &self.black_queens,
+            &self.black_kings,
+        ]
+    }
 
-        for bitboard in &self.bitboards {
-            board_mask |= bitboard;
+    pub fn piece_at_square_mut(&mut self, square: Square) -> Option<Piece> {
+        let shift = square.to_shift();
+
+        for bitboard in self.piece_bitboards() {
+            if bitboard.mask << shift == 1 {
+                return Some(bitboard.piece);
+            }
         }
 
-        board_mask
+        None
+    }
+
+    // !====!====! WIP !====!====!
+    // pub fn get_pseudolegal_moves(&self) -> Vec<Move> {
+    //     let mut moves = vec![];
+
+    //     for bitboard in self.bitboards.iter() {
+    //         let mut i = *bitboard;
+
+    //         while i > 0 {
+    //             // Check if leftmost bit is 1
+    //             let piece_found = i & 1 == 1;
+
+    //             if piece_found {
+    //                 let piece = bitboard.
+    //             }
+
+    //             // Shift all bits left by one
+    //             i <<= 1;
+    //         }
+    //     }
+
+    //     moves
+    // }
+
+    pub fn clear_pieces(&mut self) {
+        self.white_pawns.mask = 0;
+        self.white_knights.mask = 0;
+        self.white_bishops.mask = 0;
+        self.white_rooks.mask = 0;
+        self.white_queens.mask = 0;
+        self.white_kings.mask = 0;
+        self.black_pawns.mask = 0;
+        self.black_knights.mask = 0;
+        self.black_bishops.mask = 0;
+        self.black_rooks.mask = 0;
+        self.black_queens.mask = 0;
+        self.black_kings.mask = 0;
+    }
+
+    pub fn pieces_mask(&self) -> u64 {
+        self.white_pawns.mask
+            | self.white_knights.mask
+            | self.white_bishops.mask
+            | self.white_rooks.mask
+            | self.white_queens.mask
+            | self.white_kings.mask
+            | self.black_pawns.mask
+            | self.black_knights.mask
+            | self.black_bishops.mask
+            | self.black_rooks.mask
+            | self.black_queens.mask
+            | self.black_kings.mask
     }
 }
 
@@ -422,6 +524,75 @@ impl Square {
             "g8" => Some(Square::G8),
             "h8" => Some(Square::H8),
             _ => None,
+        }
+    }
+
+    pub fn to_shift(&self) -> u8 {
+        match self {
+            Self::A1 => 0,
+            Self::B1 => 1,
+            Self::C1 => 2,
+            Self::D1 => 3,
+            Self::E1 => 4,
+            Self::F1 => 5,
+            Self::G1 => 6,
+            Self::H1 => 7,
+            Self::A2 => 8,
+            Self::B2 => 9,
+            Self::C2 => 10,
+            Self::D2 => 11,
+            Self::E2 => 12,
+            Self::F2 => 13,
+            Self::G2 => 14,
+            Self::H2 => 15,
+            Self::A3 => 16,
+            Self::B3 => 17,
+            Self::C3 => 18,
+            Self::D3 => 19,
+            Self::E3 => 20,
+            Self::F3 => 21,
+            Self::G3 => 22,
+            Self::H3 => 23,
+            Self::A4 => 24,
+            Self::B4 => 25,
+            Self::C4 => 26,
+            Self::D4 => 27,
+            Self::E4 => 28,
+            Self::F4 => 29,
+            Self::G4 => 30,
+            Self::H4 => 31,
+            Self::A5 => 32,
+            Self::B5 => 33,
+            Self::C5 => 34,
+            Self::D5 => 35,
+            Self::E5 => 36,
+            Self::F5 => 37,
+            Self::G5 => 38,
+            Self::H5 => 39,
+            Self::A6 => 40,
+            Self::B6 => 41,
+            Self::C6 => 42,
+            Self::D6 => 43,
+            Self::E6 => 44,
+            Self::F6 => 45,
+            Self::G6 => 46,
+            Self::H6 => 47,
+            Self::A7 => 48,
+            Self::B7 => 49,
+            Self::C7 => 50,
+            Self::D7 => 51,
+            Self::E7 => 52,
+            Self::F7 => 53,
+            Self::G7 => 54,
+            Self::H7 => 55,
+            Self::A8 => 56,
+            Self::B8 => 57,
+            Self::C8 => 58,
+            Self::D8 => 59,
+            Self::E8 => 60,
+            Self::F8 => 61,
+            Self::G8 => 62,
+            Self::H8 => 63,
         }
     }
 }
