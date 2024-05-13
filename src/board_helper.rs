@@ -1,3 +1,4 @@
+use crate::mask::Mask;
 use crate::piece::{Color, Piece};
 
 pub struct BoardHelper;
@@ -7,7 +8,7 @@ const BISHOP_MOVE_OFFSETS: [i8; 4] = [7, 9, -7, -9];
 const ROOK_MOVE_OFFSETS: [i8; 4] = [8, 1, -8, -1];
 
 impl BoardHelper {
-    pub fn generate_white_pawn_move_masks() -> [u64; 64] {
+    pub fn generate_white_pawn_move_masks() -> [Mask; 64] {
         let mut masks = [0; 64];
 
         for i in 8..56 {
@@ -18,10 +19,10 @@ impl BoardHelper {
             }
         }
 
-        masks
+        masks.map(|val| Mask(val))
     }
 
-    pub fn generate_black_pawn_move_masks() -> [u64; 64] {
+    pub fn generate_black_pawn_move_masks() -> [Mask; 64] {
         let mut masks = [0; 64];
 
         for i in 8..56 {
@@ -32,10 +33,10 @@ impl BoardHelper {
             }
         }
 
-        masks
+        masks.map(|val| Mask(val))
     }
 
-    pub fn generate_white_pawn_capture_masks() -> [u64; 64] {
+    pub fn generate_white_pawn_capture_masks() -> [Mask; 64] {
         let mut masks = [0; 64];
         let (mut rank, mut file): (usize, usize);
         let mut mask: usize;
@@ -57,10 +58,10 @@ impl BoardHelper {
             masks[i] = mask as u64;
         }
 
-        masks
+        masks.map(|val| Mask(val))
     }
 
-    pub fn generate_black_pawn_capture_masks() -> [u64; 64] {
+    pub fn generate_black_pawn_capture_masks() -> [Mask; 64] {
         let mut masks = [0; 64];
         let mut rank;
         let mut file;
@@ -89,10 +90,10 @@ impl BoardHelper {
             masks[i] = mask as u64;
         }
 
-        masks
+        masks.map(|val| Mask(val))
     }
 
-    pub fn generate_rook_move_masks() -> [u64; 64] {
+    pub fn generate_rook_move_masks() -> [Mask; 64] {
         let mut masks = [0; 64];
 
         for start in 0..64 {
@@ -117,10 +118,10 @@ impl BoardHelper {
             }
         }
 
-        masks
+        masks.map(|val| Mask(val))
     }
 
-    pub fn generate_bishop_move_masks() -> [u64; 64] {
+    pub fn generate_bishop_move_masks() -> [Mask; 64] {
         let mut masks = [0; 64];
 
         for start in 0..64 {
@@ -145,10 +146,10 @@ impl BoardHelper {
             }
         }
 
-        masks
+        masks.map(|val| Mask(val))
     }
 
-    pub fn generate_knight_move_masks() -> [u64; 64] {
+    pub fn generate_knight_move_masks() -> [Mask; 64] {
         let mut masks = [0; 64];
 
         for start in 0..64 {
@@ -175,10 +176,10 @@ impl BoardHelper {
             }
         }
 
-        masks
+        masks.map(|val| Mask(val))
     }
 
-    pub fn generate_king_move_masks() -> [u64; 64] {
+    pub fn generate_king_move_masks() -> [Mask; 64] {
         let mut masks = [0; 64];
 
         for start in 0..64 {
@@ -206,7 +207,7 @@ impl BoardHelper {
             }
         }
 
-        masks
+        masks.map(|val| Mask(val))
     }
 
     pub fn char_to_piece(ch: char) -> Option<Piece> {
@@ -261,12 +262,12 @@ impl BoardHelper {
             'q' => 10,
             'k' => 11,
 
-            _ => panic!("Invalid piece char '{piece}'"),
+            _ => panic!("invalid piece char '{piece}'"),
         }
     }
 
-    pub fn print_mask(mask: u64) {
-        let string_mask = format!("{:064b}", mask.reverse_bits());
+    pub fn print_mask(mask: &Mask) {
+        let string_mask = format!("{:064b}", mask.0.reverse_bits());
         let mut lines = [""; 8];
 
         let mut i = 7;
