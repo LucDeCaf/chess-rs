@@ -1,6 +1,6 @@
 use crate::board_helper::BoardHelper;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
     White,
     Black,
@@ -20,15 +20,17 @@ impl Piece {
     pub fn color(&self) -> Color {
         match self {
             Self::Pawn(color)
-            | Self::Knight(color) 
-            | Self::Bishop(color) 
-            | Self::Rook(color) 
-            | Self::Queen(color) 
-            | Self::King(color) 
-                => *color,
+            | Self::Knight(color)
+            | Self::Bishop(color)
+            | Self::Rook(color)
+            | Self::Queen(color)
+            | Self::King(color) => *color,
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct MoveError;
 
 #[derive(Debug)]
 pub struct Bitboard {
@@ -100,18 +102,54 @@ impl Board {
         let board = Board {
             is_white_turn: true,
 
-            white_pawns: Bitboard { mask: 0, piece: Piece::Pawn(Color::White)},
-            white_knights: Bitboard { mask: 0, piece: Piece::Knight(Color::White)},
-            white_bishops: Bitboard { mask: 0, piece: Piece::Bishop(Color::White)},
-            white_rooks: Bitboard { mask: 0, piece: Piece::Rook(Color::White)},
-            white_queens: Bitboard { mask: 0, piece: Piece::Queen(Color::White)},
-            white_kings: Bitboard { mask: 0, piece: Piece::King(Color::White)},
-            black_pawns: Bitboard { mask: 0, piece: Piece::Pawn(Color::Black)},
-            black_knights: Bitboard { mask: 0, piece: Piece::Knight(Color::Black)},
-            black_bishops: Bitboard { mask: 0, piece: Piece::Bishop(Color::Black)},
-            black_rooks: Bitboard { mask: 0, piece: Piece::Rook(Color::Black)},
-            black_queens: Bitboard { mask: 0, piece: Piece::Queen(Color::Black)},
-            black_kings: Bitboard { mask: 0, piece: Piece::King(Color::Black)},
+            white_pawns: Bitboard {
+                mask: 0,
+                piece: Piece::Pawn(Color::White),
+            },
+            white_knights: Bitboard {
+                mask: 0,
+                piece: Piece::Knight(Color::White),
+            },
+            white_bishops: Bitboard {
+                mask: 0,
+                piece: Piece::Bishop(Color::White),
+            },
+            white_rooks: Bitboard {
+                mask: 0,
+                piece: Piece::Rook(Color::White),
+            },
+            white_queens: Bitboard {
+                mask: 0,
+                piece: Piece::Queen(Color::White),
+            },
+            white_kings: Bitboard {
+                mask: 0,
+                piece: Piece::King(Color::White),
+            },
+            black_pawns: Bitboard {
+                mask: 0,
+                piece: Piece::Pawn(Color::Black),
+            },
+            black_knights: Bitboard {
+                mask: 0,
+                piece: Piece::Knight(Color::Black),
+            },
+            black_bishops: Bitboard {
+                mask: 0,
+                piece: Piece::Bishop(Color::Black),
+            },
+            black_rooks: Bitboard {
+                mask: 0,
+                piece: Piece::Rook(Color::Black),
+            },
+            black_queens: Bitboard {
+                mask: 0,
+                piece: Piece::Queen(Color::Black),
+            },
+            black_kings: Bitboard {
+                mask: 0,
+                piece: Piece::King(Color::Black),
+            },
 
             white_pawn_move_masks: BoardHelper::generate_white_pawn_move_masks(),
             black_pawn_move_masks: BoardHelper::generate_black_pawn_move_masks(),
@@ -201,14 +239,28 @@ impl Board {
         }
     }
 
-    pub fn make_move(&mut self, mv: &Move) {
-        // Find pieces
-        let from_piece = self.piece_at_square_mut(mv.from).unwrap();
-        let from_bitboard = self.pieces_mut(from_piece);
-        let to_piece = self.piece_at_square_mut(mv.to).unwrap();
-        let to_bitboard = self.pieces_mut(to_piece);
+    pub fn make_move(&mut self, mv: &Move) -> Result<(), MoveError> {
+        // Prevent piece from moving to itself
+        if mv.from == mv.to {
+            return Err(MoveError);
+        }
 
+        // Move piece on its bitboard
+        if let Some(from_piece) = self.piece_at_square(mv.from) {
+            let from_bitboard = self.pieces_mut(from_piece);
+            from_bitboard.mask ^= (1 << mv.from.to_shift()) + (1 << mv.to.to_shift());
+        } else {
+            return Err(MoveError);
+        }
 
+        // Remove piece on target bitboard
+        if let Some(to_piece) = self.piece_at_square(mv.to) {
+            let to_bitboard = self.pieces_mut(to_piece);
+            to_bitboard.mask &= !(1 << mv.to.to_shift());
+        }
+
+        self.is_white_turn = !self.is_white_turn;
+        Ok(())
     }
 
     pub fn unmake_move(&mut self, mv: &Move) {
@@ -218,7 +270,7 @@ impl Board {
         };
 
         self.is_white_turn = !self.is_white_turn;
-        self.make_move(&reverse_move);
+        self.make_move(&reverse_move).unwrap();
         self.is_white_turn = !self.is_white_turn;
     }
 
@@ -239,7 +291,7 @@ impl Board {
         ]
     }
 
-    pub fn piece_at_square_mut(&mut self, square: Square) -> Option<Piece> {
+    pub fn piece_at_square(&self, square: Square) -> Option<Piece> {
         let shift = square.to_shift();
 
         for bitboard in self.piece_bitboards() {
@@ -305,7 +357,7 @@ impl Board {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Square {
     A1,
     B1,
