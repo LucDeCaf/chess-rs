@@ -1,4 +1,4 @@
-use crate::board::{Color, Piece};
+use crate::piece::{Color, Piece};
 
 pub struct BoardHelper;
 

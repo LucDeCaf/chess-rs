@@ -1,4 +1,5 @@
-use chess::board::{Board, Move};
+use chess::board::Board;
+use chess::moves::Move;
 
 // Starting position
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
