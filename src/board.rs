@@ -56,7 +56,7 @@ impl Move {
 #[derive(Debug)]
 pub struct Board {
     // Game data
-    pub is_white_turn: bool,
+    pub current_turn: Color,
 
     // White pieces
     pub white_pawns: Bitboard,
@@ -100,7 +100,7 @@ impl Board {
         });
 
         let board = Board {
-            is_white_turn: true,
+            current_turn: Color::White,
 
             white_pawns: Bitboard {
                 mask: 0,
@@ -203,10 +203,17 @@ impl Board {
         }
 
         // Check whose turn it is
-        self.is_white_turn = match segments.next().expect("FEN string should have 6 segments") {
-            "w" => true,
-            "b" => false,
+        self.current_turn = match segments.next().expect("FEN string should have 6 segments") {
+            "w" => Color::White,
+            "b" => Color::Black,
             _ => panic!("Second section of FEN string should be either 'w' or 'b'."),
+        };
+    }
+
+    pub fn swap_current_turn(&mut self) {
+        self.current_turn = match self.current_turn {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
         };
     }
 
@@ -259,7 +266,7 @@ impl Board {
             to_bitboard.mask &= !(1 << mv.to.to_shift());
         }
 
-        self.is_white_turn = !self.is_white_turn;
+        self.swap_current_turn();
         Ok(())
     }
 
@@ -269,9 +276,8 @@ impl Board {
             to: mv.from,
         };
 
-        self.is_white_turn = !self.is_white_turn;
         self.make_move(&reverse_move).unwrap();
-        self.is_white_turn = !self.is_white_turn;
+        self.swap_current_turn();
     }
 
     pub fn piece_bitboards<'a>(&'a self) -> [&'a Bitboard; 12] {
