@@ -111,5 +111,6 @@ mod mask_tests {
             Mask(0b00000000000000000101000100000001).ones(),
             vec![Square::A1, Square::A2, Square::E2, Square::G2]
         );
+        assert_eq!(Mask(1).ones(), vec![Square::A1]);
     }
 }

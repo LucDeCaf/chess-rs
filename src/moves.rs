@@ -1,6 +1,6 @@
 use crate::square::Square;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move {
     pub to: Square,
     pub from: Square,
