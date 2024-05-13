@@ -239,7 +239,7 @@ impl Square {
         }
     }
 
-    pub fn to_shift(&self) -> u8 {
+    pub fn to_shift(&self) -> usize {
         match self {
             Self::A1 => 0,
             Self::B1 => 1,
