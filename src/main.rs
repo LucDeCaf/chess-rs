@@ -28,27 +28,26 @@ fn parse_command(input: &str) -> Command {
     }
 }
 
-fn process_command(command: &Command, board: &mut Board) -> String {
+fn process_command(command: &Command, board: &mut Board) -> Option<&'static str> {
     match command {
-        Command::Uci => "id name Chress\nid author Luc de Cafmeyer\nuciok".to_owned(),
-        Command::IsReady => "readyok".to_owned(),
-        Command::UciNewGame => "readyok".to_owned(),
+        Command::Uci => Some("id name Chress\nid author Luc de Cafmeyer\nuciok\n"),
+        Command::IsReady => Some("readyok\n"),
+        Command::UciNewGame => Some("readyok\n"),
         Command::Position(moves) => {
             for mv in moves.split(' ') {
                 if mv == "startpos" {
                     board.load_from_fen(START_FEN);
                     continue;
                 }
-                board.make_move(&Move::from_long_algebraic(mv).unwrap());
+                board
+                    .make_move(&Move::from_long_algebraic(mv).unwrap())
+                    .unwrap();
             }
-            "".to_owned()
+            None
         }
-        Command::Go => {
-            
-            "".to_owned()
-        }
-        Command::Quit => "".to_owned(),
-        Command::Invalid => "".to_owned(),
+        Command::Go => None,
+        Command::Quit => None,
+        Command::Invalid => None,
     }
 }
 
@@ -67,6 +66,8 @@ fn main() {
             break;
         }
 
-        println!("{}", response);
+        if let Some(response) = response {
+            print!("{}", response);
+        }
     }
 }
