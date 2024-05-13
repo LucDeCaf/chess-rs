@@ -1,3 +1,5 @@
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
+
 use crate::square::Square;
 
 #[derive(Debug, Clone)]
@@ -21,6 +23,56 @@ impl Mask {
 
         squares
     }
+}
+
+impl BitAnd for Mask {
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Mask(self.0 & rhs.0)
+    }
+
+    type Output = Self;
+}
+
+impl BitAndAssign for Mask {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0
+    }
+}
+
+impl BitOr for Mask {
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Mask(self.0 | rhs.0)
+    }
+
+    type Output = Self;
+}
+
+impl BitOrAssign for Mask {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0
+    }
+}
+
+impl BitXor for Mask {
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        Mask(self.0 ^ rhs.0)
+    }
+
+    type Output = Self;
+}
+
+impl BitXorAssign for Mask {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.0 ^= rhs.0
+    }
+}
+
+impl Not for Mask {
+    fn not(self) -> Self::Output {
+        Mask(!self.0)
+    }
+
+    type Output = Self;
 }
 
 #[cfg(test)]
