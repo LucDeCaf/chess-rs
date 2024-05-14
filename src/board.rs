@@ -122,43 +122,46 @@ impl Board {
         board
     }
 
-    // !!! ====== !!! BROKEN !!! ====== !!!
-    // ! This is a high-priority fix as without fixing this, it
-    // ! becomes nearly impossible to debug anything else.
     pub fn load_from_fen(&mut self, fen: &str) {
         // Reset bitboards
         self.clear_pieces();
 
-        // Get segments
+        // Get segments of FEN string
         let mut segments = fen.split(' ');
 
-        // Load position
-        let mut current_pos: usize = 0;
-        for ch in segments
+        let rows = segments
             .next()
             .expect("FEN string should have 6 segments")
-            .chars()
-        {
-            match ch {
-                // Skip squares
-                '1'..='8' => {
-                    let digit = ch
-                        .to_digit(9)
-                        .expect("invalid number of empty squares for FEN string");
+            .split('/')
+            .rev();
 
-                    current_pos += digit as usize;
+        for (i, row) in rows.enumerate() {
+            let mut chars = row.chars();
+            let mut current_pos = 0;
+
+            while current_pos < 8 {
+                if let Some(ch) = chars.next() {
+                    match ch {
+                        // Skip squares
+                        '1'..='8' => {
+                            let digit = ch.to_digit(9).unwrap();
+                            current_pos += digit as usize;
+                        }
+
+                        // Add piece
+                        'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
+                            let piece_type = BoardHelper::char_to_piece(ch).unwrap();
+                            let bitboard = self.piece_mask_mut(&piece_type);
+                            bitboard.mask.0 |= 1 << (current_pos + i * 8);
+                            current_pos += 1;
+                        }
+
+                        // Ignore invalid input (for now)
+                        _ => (),
+                    }
+                } else {
+                    break;
                 }
-
-                // Add piece
-                'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
-                    let piece_type = BoardHelper::char_to_piece(ch).unwrap();
-                    let bitboard = self.piece_mask_mut(&piece_type);
-                    bitboard.mask.0 |= 1 << current_pos;
-                    current_pos += 1;
-                }
-
-                // Ignore invalid input (at least for now)
-                _ => (),
             }
         }
 
@@ -348,7 +351,6 @@ impl Board {
         None
     }
 
-    // !====! WIP !====!
     pub fn get_pseudo(&self, piece: &Piece) -> Vec<Move> {
         let mut moves = vec![];
         let bitboard = self.piece_mask(piece);
@@ -371,17 +373,6 @@ impl Board {
 
         moves
     }
-
-    // // !====! WIP !====!
-    // pub fn get_all_pseudo(&self) -> Vec<Move> {
-    //     let mut all_moves = vec![];
-
-    //     for bitboard in self.piece_bitboards() {
-    //         let moves = self.get_pseudo(bitboard);
-    //     }
-
-    //     all_moves
-    // }
 
     fn clear_pieces(&mut self) {
         self.white_pawns.mask.0 = 0;
@@ -447,6 +438,8 @@ mod board_tests {
         let mut board = Board::new();
         board.load_from_fen(START_FEN);
 
-        dbg!(&board.get_pseudo(&Piece::Knight(Color::White)));
+        BoardHelper::print_mask(&board.black_kings.mask);
+
+        dbg!(&board.get_pseudo(&Piece::King(Color::Black)));
     }
 }
