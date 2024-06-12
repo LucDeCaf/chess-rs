@@ -1,4 +1,4 @@
-use crate::board_helper::{BoardHelper, BISHOP_MOVE_OFFSETS, ROOK_MOVE_OFFSETS};
+use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,34 +34,6 @@ pub enum Direction {
     Orthogonal,
     Diagonal,
 }
-
-// pub fn generate_rook_move_masks() -> [Mask; 64] {
-//     let mut masks = [0; 64];
-
-//     for start in 0..64 {
-//         for offset in ROOK_MOVE_OFFSETS {
-//             let mut target = start as i8 + offset;
-//             let mut prev_rank = Self::rank(start as usize);
-//             let mut prev_file = Self::file(start as usize);
-
-//             while target >= 0 && target < 64 {
-//                 if Self::rank_difference(prev_rank, target as usize) > 1
-//                     || Self::file_difference(prev_file, target as usize) > 1
-//                 {
-//                     break;
-//                 }
-
-//                 prev_rank = Self::rank(target as usize);
-//                 prev_file = Self::file(target as usize);
-
-//                 masks[start] |= 1 << target;
-//                 target += offset;
-//             }
-//         }
-//     }
-
-//     masks.map(|val| Mask(val))
-// }
 
 impl Direction {
     pub fn blockers(&self) -> [Mask; 64] {
@@ -102,6 +74,10 @@ impl Direction {
 
         blockers
     }
+
+    pub fn relevant_blockers(&self) -> Vec<Vec<Mask>> {
+        self.blockers().into_iter().map(|m| m.submasks()).collect()
+    }
 }
 
 #[cfg(test)]
@@ -109,13 +85,21 @@ mod direction_tests {
     use super::*;
 
     #[test]
-    fn test_blockers() {
+    fn debug_blockers() {
         let ortho = Direction::Orthogonal;
 
         for (i, blocker) in ortho.blockers().iter().enumerate() {
             println!("blocker {}:", i);
             BoardHelper::print_mask(blocker);
             println!("");
+        }
+    }
+
+    #[test]
+    fn debug_relevant_blockers() {
+        for blocker_list in Direction::Orthogonal.relevant_blockers() {
+            BoardHelper::print_mask(&blocker_list[0]);
+            println!();
         }
     }
 }

@@ -41,6 +41,25 @@ impl Mask {
 
         squares
     }
+
+    pub fn submasks(&self) -> Vec<Mask> {
+        // Adapted from: https://cp-algorithms.com/algebra/all-submasks.html
+
+        let mut submasks = Vec::new();
+
+        let m = self.0;
+        let mut s = m;
+
+        while s > 0 {
+            submasks.push(Mask(s));
+            s = (s - 1) & m;
+        }
+
+        // Add zero mask here so that start and end are as far apart as possible
+        submasks.push(Mask(0));
+
+        submasks
+    }
 }
 
 impl BitAnd for Mask {
@@ -95,6 +114,8 @@ impl Not for Mask {
 
 #[cfg(test)]
 mod mask_tests {
+    use crate::{board_helper::BoardHelper, piece::Direction};
+
     use super::*;
 
     #[test]
@@ -112,5 +133,16 @@ mod mask_tests {
             vec![Square::A1, Square::A2, Square::E2, Square::G2]
         );
         assert_eq!(Mask(1).ones(), vec![Square::A1]);
+    }
+
+    #[test]
+    fn test_submasks() {
+        let rook_submasks = Direction::Orthogonal.blockers();
+        let rook_a1_mask = rook_submasks[0];
+
+        for submask in &rook_a1_mask.submasks()[0..16] {
+            BoardHelper::print_mask(&submask);
+            println!();
+        }
     }
 }
