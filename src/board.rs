@@ -43,6 +43,7 @@ pub struct Board {
     pub king_move_masks: [Mask; 64],
 }
 
+#[allow(unused)]
 impl Board {
     pub fn new() -> Self {
         // Use rook and bishop masks to generate queen masks
