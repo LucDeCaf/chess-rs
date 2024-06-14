@@ -260,17 +260,17 @@ impl Board {
         }
 
         // Move piece on its bitboard
-        if let Some(from_piece) = self.piece_at_square(&mv.from) {
+        if let Some(from_piece) = self.piece_at_square(mv.from) {
             let from_bitboard = self.piece_mask_mut(&from_piece);
-            from_bitboard.mask.0 ^= (1 << mv.from.to_shift()) + (1 << mv.to.to_shift());
+            from_bitboard.mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
         } else {
             return Err(MoveError);
         }
 
         // Remove piece on target bitboard
-        if let Some(to_piece) = self.piece_at_square(&mv.to) {
+        if let Some(to_piece) = self.piece_at_square(mv.to) {
             let to_bitboard = self.piece_mask_mut(&to_piece);
-            to_bitboard.mask.0 &= !(1 << mv.to.to_shift());
+            to_bitboard.mask.0 &= !(1 << mv.to as usize);
         }
 
         self.swap_current_turn();
@@ -340,8 +340,8 @@ impl Board {
         }
     }
 
-    pub fn piece_at_square(&self, square: &Square) -> Option<Piece> {
-        let shift = square.to_shift();
+    pub fn piece_at_square(&self, square: Square) -> Option<Piece> {
+        let shift = square as usize;
 
         for bitboard in self.piece_bitboards() {
             if bitboard.mask.0 << shift == 1 {
@@ -361,7 +361,7 @@ impl Board {
         let color = piece.color();
 
         for piece_position in squares {
-            let move_mask = self.move_masks(piece)[piece_position.to_shift()];
+            let move_mask = self.move_masks(piece)[piece_position as usize];
             let targets = move_mask & !self.friendly_pieces_mask(color);
 
             for target in targets.ones() {
