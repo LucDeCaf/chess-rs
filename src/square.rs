@@ -1,3 +1,5 @@
+use crate::mask::Mask;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Square {
@@ -68,6 +70,10 @@ pub enum Square {
 }
 
 impl Square {
+    pub fn mask(&self) -> Mask {
+        Mask(1 << *self as u8)
+    }
+
     pub fn from_u8(val: u8) -> Option<Self> {
         match val {
             0 => Some(Self::A1),

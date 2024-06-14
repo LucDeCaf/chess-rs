@@ -1,7 +1,10 @@
 use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
-use crate::moves::Move;
 use crate::square::Square;
+
+pub const KNIGHT_MOVE_OFFSETS: [i8; 8] = [15, 17, 6, 10, -10, -6, -17, -15];
+pub const BISHOP_MOVE_OFFSETS: [i8; 4] = [7, 9, -7, -9];
+pub const ROOK_MOVE_OFFSETS: [i8; 4] = [8, 1, -8, -1];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
@@ -39,6 +42,9 @@ pub enum Direction {
 }
 
 impl Direction {
+    /// Generate a list of masks for each square representing all of its possible blockers.
+    ///
+    /// The mask does not include the edges of the board, unless the square itself is on an edge, in which case the edge is included.
     pub fn blockers(&self) -> [Mask; 64] {
         const TOP_EDGE_MASK: u64 =
             0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
@@ -78,16 +84,56 @@ impl Direction {
         blockers
     }
 
+    /// Returns a vector of all possible blocker combinations for each square.
     pub fn blocker_subsets(&self) -> [Vec<Mask>; 64] {
         self.blockers().map(|m| m.submasks())
     }
 
+    /// Returns a singular mask containing all possible squares that a piece can move to from another square.
+    ///
+    /// **DO NOT** use this function to generate moves at runtime. This function should **ONLY** be used to bootstrap the much faster magic bitboard approach to move gen.
     pub fn moves(&self, square: Square, blockers: Mask) -> Mask {
+        //! ---- WIP ----
+        let blockerlist = self.blockers();
         let blockers = self.blockers()[square as usize] & blockers;
 
-        // TODO: Generate valid move mask using slower, iterative method
+        let offsets = match self {
+            Direction::Orthogonal => ROOK_MOVE_OFFSETS,
+            Direction::Diagonal => BISHOP_MOVE_OFFSETS,
+        };
 
-        todo!()
+        let mut movemask = 0;
+
+        for offset in offsets {
+            let mut target = square as i8 + offset;
+            let (mut prev_rank, mut prev_file) = (
+                BoardHelper::rank(square as usize),
+                BoardHelper::file(square as usize),
+            );
+
+            while target >= 0 && target < 64 {
+                // Prevent wrapping around edges
+                if BoardHelper::rank_difference(prev_rank, target as usize) > 1
+                    || BoardHelper::file_difference(prev_file, target as usize) > 1
+                {
+                    break;
+                }
+                prev_rank = BoardHelper::rank(target as usize);
+                prev_file = BoardHelper::file(target as usize);
+
+                // Add move to mask
+                movemask |= 1 << target;
+
+                // Check for piece in the way (should still be included in mask)
+                if blockers.0 & (1 << target) != 0 {
+                    break;
+                }
+
+                target += offset;
+            }
+        }
+
+        Mask(movemask)
     }
 }
 
@@ -112,5 +158,13 @@ mod direction_tests {
             BoardHelper::print_mask(&blocker_list[0]);
             println!();
         }
+    }
+
+    #[test]
+    fn debug_move_finding() {
+        let blockers =
+            Square::E6.mask() | Square::C4.mask() | Square::G4.mask() | Square::A8.mask();
+        let rook_moves_a1 = Direction::Orthogonal.moves(Square::E4, blockers);
+        BoardHelper::print_mask(&rook_moves_a1);
     }
 }

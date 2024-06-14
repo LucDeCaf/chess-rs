@@ -1,11 +1,7 @@
 use crate::mask::Mask;
-use crate::piece::{Color, Piece};
+use crate::piece::{Color, Piece, BISHOP_MOVE_OFFSETS, KNIGHT_MOVE_OFFSETS, ROOK_MOVE_OFFSETS};
 
 pub struct BoardHelper;
-
-const KNIGHT_MOVE_OFFSETS: [i8; 8] = [15, 17, 6, 10, -10, -6, -17, -15];
-const BISHOP_MOVE_OFFSETS: [i8; 4] = [7, 9, -7, -9];
-const ROOK_MOVE_OFFSETS: [i8; 4] = [8, 1, -8, -1];
 
 impl BoardHelper {
     pub fn generate_white_pawn_move_masks() -> [Mask; 64] {
@@ -99,10 +95,11 @@ impl BoardHelper {
         for start in 0..64 {
             for offset in ROOK_MOVE_OFFSETS {
                 let mut target = start as i8 + offset;
-                let mut prev_rank = Self::rank(start as usize);
-                let mut prev_file = Self::file(start as usize);
+                let mut prev_rank = Self::rank(start);
+                let mut prev_file = Self::file(start);
 
                 while target >= 0 && target < 64 {
+                    // If moving by offset wraps you around the board then stop
                     if Self::rank_difference(prev_rank, target as usize) > 1
                         || Self::file_difference(prev_file, target as usize) > 1
                     {
@@ -236,11 +233,11 @@ impl BoardHelper {
         i % 8
     }
 
-    fn rank_difference(rank: usize, tile: usize) -> usize {
+    pub fn rank_difference(rank: usize, tile: usize) -> usize {
         rank.abs_diff(tile / 8)
     }
 
-    fn file_difference(file: usize, tile: usize) -> usize {
+    pub fn file_difference(file: usize, tile: usize) -> usize {
         file.abs_diff(tile % 8)
     }
 
