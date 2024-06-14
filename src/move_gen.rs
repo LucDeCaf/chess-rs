@@ -1,10 +1,7 @@
-use std::io::{stdout, Write};
-
 use rand::{thread_rng, Rng};
 
 use crate::{mask::Mask, piece::Direction, square::Square};
 
-const INDEX_BITS: u8 = 16;
 // const ROOK_MOVE_DATA: (Vec<MagicEntry>, Vec<Vec<Mask>>) =
 //     create_magics(Direction::Orthogonal, INDEX_BITS);
 // const BISHOP_MOVE_DATA: (Vec<MagicEntry>, Vec<Vec<Mask>>) =
@@ -109,6 +106,8 @@ fn create_magics(direction: Direction, index_bits: u8) -> (Vec<MagicEntry>, Vec<
 
 #[cfg(test)]
 pub mod move_gen_tests {
+    use std::fs;
+
     use crate::{board_helper::BoardHelper, piece::Direction};
 
     use super::*;
@@ -118,13 +117,13 @@ pub mod move_gen_tests {
         let direction = Direction::Orthogonal;
         let square = Square::A1;
         let index_bits = 16;
-        let (magic, moves) = generate_magic(direction, square, index_bits);
+        let (magic, _) = generate_magic(direction, square, index_bits);
 
         dbg!(magic);
     }
 
     #[test]
-    fn debug_magic_using() {
+    fn debug_magic_index_usage() {
         let direction = Direction::Diagonal;
         let square = Square::A1;
         let index_bits = 16;
@@ -146,7 +145,45 @@ pub mod move_gen_tests {
     }
 
     #[test]
-    fn try_create_magics() {
-        let (rook_magics, rook_moves) = create_magics(Direction::Orthogonal, INDEX_BITS);
+    fn create_rook_magics() -> std::io::Result<()> {
+        let rook_index_bits = 16;
+        let (rook_magics, _) = create_magics(Direction::Orthogonal, rook_index_bits);
+
+        let mut buf = String::new();
+
+        for (i, magic) in rook_magics.into_iter().enumerate() {
+            buf.push_str(&format!("{:#018x}", magic.magic));
+
+            if i != 63 {
+                buf.push('\n');
+            }
+        }
+
+        fs::write(format!("build/rook_magics_{}.txt", rook_index_bits), buf)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn create_bishop_magics() -> std::io::Result<()> {
+        let bishop_index_bits = 16;
+        let (bishop_magics, _) = create_magics(Direction::Orthogonal, bishop_index_bits);
+
+        let mut buf = String::new();
+
+        for (i, magic) in bishop_magics.into_iter().enumerate() {
+            buf.push_str(&format!("{:#018x}", magic.magic));
+
+            if i != 63 {
+                buf.push('\n');
+            }
+        }
+
+        fs::write(
+            format!("build/bishop_magics_{}.txt", bishop_index_bits),
+            buf,
+        )?;
+
+        Ok(())
     }
 }
