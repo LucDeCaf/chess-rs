@@ -1,5 +1,7 @@
 use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
+use crate::moves::Move;
+use crate::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
@@ -30,6 +32,7 @@ impl Piece {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Direction {
     Orthogonal,
     Diagonal,
@@ -75,8 +78,16 @@ impl Direction {
         blockers
     }
 
-    pub fn relevant_blockers(&self) -> Vec<Vec<Mask>> {
-        self.blockers().into_iter().map(|m| m.submasks()).collect()
+    pub fn blocker_subsets(&self) -> [Vec<Mask>; 64] {
+        self.blockers().map(|m| m.submasks())
+    }
+
+    pub fn moves(&self, square: Square, blockers: Mask) -> Mask {
+        let blockers = self.blockers()[square as usize] & blockers;
+
+        // TODO: Generate valid move mask using slower, iterative method
+
+        todo!()
     }
 }
 
@@ -97,7 +108,7 @@ mod direction_tests {
 
     #[test]
     fn debug_relevant_blockers() {
-        for blocker_list in Direction::Orthogonal.relevant_blockers() {
+        for blocker_list in Direction::Orthogonal.blocker_subsets() {
             BoardHelper::print_mask(&blocker_list[0]);
             println!();
         }
