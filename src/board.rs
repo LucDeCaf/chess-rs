@@ -344,9 +344,12 @@ impl Board {
         let shift = square as usize;
 
         for bitboard in self.bitboards() {
-            if bitboard.mask.0 << shift == 1 {
+            if bitboard.mask.0 & 1 << shift > 0 {
                 return Some(bitboard.piece);
             }
+            // if bitboard.mask.0 << shift == 1 {
+            //     return Some(bitboard.piece);
+            // }
         }
 
         None
@@ -481,6 +484,6 @@ mod board_tests {
             })
             .unwrap();
 
-        dbg!(&board);
+        board.all_pieces_mask().print();
     }
 }

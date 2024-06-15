@@ -263,18 +263,18 @@ impl BoardHelper {
         }
     }
 
-    pub fn print_mask(mask: &Mask) {
-        let string_mask = format!("{:064b}", mask.0.reverse_bits());
-        let mut lines = [""; 8];
+    // pub fn print_mask(mask: &Mask) {
+    //     let string_mask = format!("{:064b}", mask.0.reverse_bits());
+    //     let mut lines = [""; 8];
 
-        let mut i = 7;
-        while i < 64 {
-            lines[(i + 1) / 8 - 1] = &string_mask[i - 7..=i];
-            i += 8;
-        }
+    //     let mut i = 7;
+    //     while i < 64 {
+    //         lines[(i + 1) / 8 - 1] = &string_mask[i - 7..=i];
+    //         i += 8;
+    //     }
 
-        for line in lines.iter().rev() {
-            println!("{}", line);
-        }
-    }
+    //     for line in lines.iter().rev() {
+    //         println!("{}", line);
+    //     }
+    // }
 }

@@ -155,7 +155,7 @@ mod direction_tests {
 
         for (i, blocker) in ortho.all_blockers().iter().enumerate() {
             println!("blocker {}:", i);
-            BoardHelper::print_mask(blocker);
+            blocker.print();
             println!("");
         }
     }
@@ -163,7 +163,7 @@ mod direction_tests {
     #[test]
     fn debug_relevant_blockers() {
         for blocker_list in Direction::Orthogonal.all_blocker_subsets() {
-            BoardHelper::print_mask(&blocker_list[0]);
+            blocker_list[0].print();
             println!();
         }
     }
@@ -173,6 +173,6 @@ mod direction_tests {
         let blockers =
             Square::E6.mask() | Square::C4.mask() | Square::G4.mask() | Square::A8.mask();
         let rook_moves_a1 = Direction::Orthogonal.moves_for(Square::E4, blockers);
-        BoardHelper::print_mask(&rook_moves_a1);
+        rook_moves_a1.print();
     }
 }

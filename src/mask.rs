@@ -60,6 +60,31 @@ impl Mask {
 
         submasks
     }
+
+    /// Prints the mask to stdout formatted as an 8x8 grid, where the far-left bit is the top-right
+    /// corner and the far-right bit is bottom-left corner (AKA, as though it were a bitboard).
+    pub fn print(&self) {
+        let string_mask = format!("{:064b}", self.0);
+        let mut output = String::with_capacity(128);
+
+        for i in 0..8 {
+            let start = i * 8;
+            let mut line = string_mask[start..start + 8].chars().rev();
+
+            if let Some(ch) = line.next() {
+                output.push(ch);
+
+                for ch in line {
+                    output.push(' ');
+                    output.push(ch);
+                }
+            }
+
+            output.push('\n');
+        }
+
+        print!("{}", output);
+    }
 }
 
 impl BitAnd for Mask {
@@ -114,7 +139,7 @@ impl Not for Mask {
 
 #[cfg(test)]
 mod mask_tests {
-    use crate::{board_helper::BoardHelper, piece::Direction};
+    use crate::piece::Direction;
 
     use super::*;
 
@@ -141,7 +166,7 @@ mod mask_tests {
         let rook_a1_mask = rook_submasks[0];
 
         for submask in &rook_a1_mask.subsets()[0..16] {
-            BoardHelper::print_mask(&submask);
+            submask.print();
             println!();
         }
     }

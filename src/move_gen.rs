@@ -318,15 +318,15 @@ mod magic_gen {
             let blockers = Mask(random_u64() & random_u64());
 
             println!("Blockers:");
-            BoardHelper::print_mask(&blockers);
+            blockers.print();
             println!();
 
             println!("Relevant blockers:");
-            BoardHelper::print_mask(&(blockers & direction.all_blockers()[square as usize]));
+            (blockers & direction.all_blockers()[square as usize]).print();
             println!();
 
             println!("Moves from A1:");
-            BoardHelper::print_mask(&moves[magic.index(blockers)]);
+            moves[magic.index(blockers)].print();
         }
 
         #[test]
