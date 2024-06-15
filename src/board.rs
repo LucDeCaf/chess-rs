@@ -286,9 +286,11 @@ impl Board {
             return false;
         }
 
-        // let legal_moves = self.get_pseudolegal_moves(square);
+        let Some((legal_moves, _)) = self.get_pseudolegal_move_mask(mv.from) else {
+            return false;
+        };
 
-        todo!();
+        (legal_moves.0 & 1 << mv.to as usize) > 0
     }
 
     fn bitboards<'a>(&'a self) -> [&'a Bitboard; 12] {
@@ -484,11 +486,14 @@ mod board_tests {
         board.load_from_fen(START_FEN);
 
         let mv = Move {
-            from: Square::G1,
-            to: Square::F3,
+            from: Square::E2,
+            to: Square::E4,
         };
+
         if board.is_move_legal(mv) {
             board.make_move(mv);
+        } else {
+            panic!("Move is illegal");
         }
 
         board.all_pieces_mask().print();
