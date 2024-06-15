@@ -1,7 +1,7 @@
 use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
 use crate::move_gen::MoveGen;
-use crate::moves::{Move, MoveError};
+use crate::moves::Move;
 use crate::piece::{Color, Piece};
 use crate::square::Square;
 
@@ -253,12 +253,8 @@ impl Board {
         }
     }
 
-    pub fn make_move(&mut self, mv: &Move) -> Result<(), MoveError> {
-        // Prevent piece from moving to itself
-        if mv.from == mv.to {
-            return Err(MoveError);
-        }
-
+    /// Makes a move on the board, regardless of whether the move is legal or not.
+    pub fn make_move(&mut self, mv: Move) {
         // Remove piece on dest bitboard
         if let Some(to_piece) = self.piece_at_square(mv.to) {
             let to_bitboard = self.bitboard_mut(to_piece);
@@ -269,22 +265,30 @@ impl Board {
         if let Some(from_piece) = self.piece_at_square(mv.from) {
             let from_bitboard = self.bitboard_mut(from_piece);
             from_bitboard.mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
-        } else {
-            return Err(MoveError);
         }
 
         self.swap_current_turn();
-        Ok(())
     }
 
-    pub fn unmake_move(&mut self, mv: &Move) {
+    pub fn unmake_move(&mut self, mv: Move) {
         let reverse_move = Move {
             from: mv.to,
             to: mv.from,
         };
 
-        self.make_move(&reverse_move).unwrap();
+        self.make_move(reverse_move);
         self.swap_current_turn();
+    }
+
+    pub fn is_move_legal(&self, mv: Move) -> bool {
+        // Prevent piece from moving to itself
+        if mv.from == mv.to {
+            return false;
+        }
+
+        // let legal_moves = self.get_pseudolegal_moves(square);
+
+        todo!();
     }
 
     fn bitboards<'a>(&'a self) -> [&'a Bitboard; 12] {
@@ -355,8 +359,7 @@ impl Board {
         None
     }
 
-    pub fn get_pseudolegal_moves(&self, square: Square) -> Option<(Vec<Move>, Piece)> {
-        let mut moves = Vec::new();
+    pub fn get_pseudolegal_move_mask(&self, square: Square) -> Option<(Mask, Piece)> {
         let blockers = self.all_pieces_mask();
 
         let piece = self.piece_at_square(square)?;
@@ -391,8 +394,6 @@ impl Board {
                 }
                 _ => (),
             }
-
-            moves.append(&mut Move::from_move_mask(square, move_mask));
         } else {
             // Grab move mask for the piece at the current square
             move_mask = self.move_masks(piece)?[square.to_shift()];
@@ -413,7 +414,12 @@ impl Board {
         // Filter out moves that capture one's own pieces
         move_mask &= !self.friendly_pieces_mask(color);
 
-        Some((moves, piece))
+        Some((move_mask, piece))
+    }
+
+    pub fn get_pseudolegal_moves(&self, square: Square) -> Option<(Vec<Move>, Piece)> {
+        let (move_mask, piece) = self.get_pseudolegal_move_mask(square)?;
+        Some((Move::from_move_mask(square, move_mask), piece))
     }
 
     fn clear_pieces(&mut self) {
@@ -477,12 +483,13 @@ mod board_tests {
         let mut board = Board::new();
         board.load_from_fen(START_FEN);
 
-        board
-            .make_move(&Move {
-                from: Square::G1,
-                to: Square::F3,
-            })
-            .unwrap();
+        let mv = Move {
+            from: Square::G1,
+            to: Square::F3,
+        };
+        if board.is_move_legal(mv) {
+            board.make_move(mv);
+        }
 
         board.all_pieces_mask().print();
     }
