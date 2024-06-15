@@ -93,8 +93,6 @@ impl Direction {
     ///
     /// **DO NOT** use this function to generate moves at runtime. This function should **ONLY** be used to bootstrap the much faster magic bitboard approach to move gen.
     pub fn moves(&self, square: Square, blockers: Mask) -> Mask {
-        //! ---- WIP ----
-        let blockerlist = self.blockers();
         let blockers = self.blockers()[square as usize] & blockers;
 
         let offsets = match self {
