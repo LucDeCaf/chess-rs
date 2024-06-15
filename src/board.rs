@@ -259,18 +259,18 @@ impl Board {
             return Err(MoveError);
         }
 
-        // Move piece on its bitboard
+        // Remove piece on dest bitboard
+        if let Some(to_piece) = self.piece_at_square(mv.to) {
+            let to_bitboard = self.bitboard_mut(to_piece);
+            to_bitboard.mask.0 &= !(1 << mv.to as usize);
+        }
+
+        // Move piece on source bitboard
         if let Some(from_piece) = self.piece_at_square(mv.from) {
             let from_bitboard = self.bitboard_mut(from_piece);
             from_bitboard.mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
         } else {
             return Err(MoveError);
-        }
-
-        // Remove piece on target bitboard
-        if let Some(to_piece) = self.piece_at_square(mv.to) {
-            let to_bitboard = self.bitboard_mut(to_piece);
-            to_bitboard.mask.0 &= !(1 << mv.to as usize);
         }
 
         self.swap_current_turn();
