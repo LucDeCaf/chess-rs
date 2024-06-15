@@ -42,7 +42,7 @@ impl Mask {
         squares
     }
 
-    pub fn submasks(&self) -> Vec<Mask> {
+    pub fn subsets(&self) -> Vec<Mask> {
         // Adapted from: https://cp-algorithms.com/algebra/all-submasks.html
 
         let mut submasks = Vec::new();
@@ -137,10 +137,10 @@ mod mask_tests {
 
     #[test]
     fn test_submasks() {
-        let rook_submasks = Direction::Orthogonal.blockers();
+        let rook_submasks = Direction::Orthogonal.all_blockers();
         let rook_a1_mask = rook_submasks[0];
 
-        for submask in &rook_a1_mask.submasks()[0..16] {
+        for submask in &rook_a1_mask.subsets()[0..16] {
             BoardHelper::print_mask(&submask);
             println!();
         }

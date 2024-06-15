@@ -45,7 +45,7 @@ impl Direction {
     /// Generate a list of masks for each square representing all of its possible blockers.
     ///
     /// The mask does not include the edges of the board, unless the square itself is on an edge, in which case the edge is included.
-    pub fn blockers(&self) -> [Mask; 64] {
+    pub fn all_blockers(&self) -> Vec<Mask> {
         const TOP_EDGE_MASK: u64 =
             0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
         const BOTTOM_EDGE_MASK: u64 =
@@ -81,19 +81,22 @@ impl Direction {
             blocker.0 &= !exclusion_mask;
         }
 
-        blockers
+        blockers.into_iter().collect()
     }
 
     /// Returns a vector of all possible blocker combinations for each square.
-    pub fn blocker_subsets(&self) -> [Vec<Mask>; 64] {
-        self.blockers().map(|m| m.submasks())
+    pub fn all_blocker_subsets(&self) -> Vec<Vec<Mask>> {
+        self.all_blockers()
+            .into_iter()
+            .map(|m| m.subsets())
+            .collect()
     }
 
     /// Returns a singular mask containing all possible squares that a piece can move to from another square.
     ///
     /// **DO NOT** use this function to generate moves at runtime. This function should **ONLY** be used to bootstrap the much faster magic bitboard approach to move gen.
-    pub fn moves(&self, square: Square, blockers: Mask) -> Mask {
-        let blockers = self.blockers()[square as usize] & blockers;
+    pub fn moves_for(&self, square: Square, blockers: Mask) -> Mask {
+        let blockers = self.all_blockers()[square as usize] & blockers;
 
         let offsets = match self {
             Direction::Orthogonal => ROOK_MOVE_OFFSETS,
@@ -143,7 +146,7 @@ mod direction_tests {
     fn debug_blockers() {
         let ortho = Direction::Orthogonal;
 
-        for (i, blocker) in ortho.blockers().iter().enumerate() {
+        for (i, blocker) in ortho.all_blockers().iter().enumerate() {
             println!("blocker {}:", i);
             BoardHelper::print_mask(blocker);
             println!("");
@@ -152,7 +155,7 @@ mod direction_tests {
 
     #[test]
     fn debug_relevant_blockers() {
-        for blocker_list in Direction::Orthogonal.blocker_subsets() {
+        for blocker_list in Direction::Orthogonal.all_blocker_subsets() {
             BoardHelper::print_mask(&blocker_list[0]);
             println!();
         }
@@ -162,7 +165,7 @@ mod direction_tests {
     fn debug_move_finding() {
         let blockers =
             Square::E6.mask() | Square::C4.mask() | Square::G4.mask() | Square::A8.mask();
-        let rook_moves_a1 = Direction::Orthogonal.moves(Square::E4, blockers);
+        let rook_moves_a1 = Direction::Orthogonal.moves_for(Square::E4, blockers);
         BoardHelper::print_mask(&rook_moves_a1);
     }
 }

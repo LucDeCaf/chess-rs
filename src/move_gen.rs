@@ -222,7 +222,7 @@ mod magic_gen {
         square: Square,
         index_bits: u8,
     ) -> (MagicEntry, Vec<Mask>) {
-        let mask = direction.blocker_subsets()[square as usize][0];
+        let mask = direction.all_blocker_subsets()[square as usize][0];
 
         loop {
             let magic = random_u64() & random_u64() & random_u64();
@@ -248,8 +248,8 @@ mod magic_gen {
     ) -> Result<Vec<Mask>, TableFillError> {
         let mut table = vec![Mask(0); 1 << entry.index_bits];
 
-        for blockers in entry.mask.submasks() {
-            let moves = direction.moves(square, blockers);
+        for blockers in entry.mask.subsets() {
+            let moves = direction.moves_for(square, blockers);
             let new_entry = &mut table[entry.index(blockers)];
 
             if new_entry.0 == 0 {
@@ -322,7 +322,7 @@ mod magic_gen {
             println!();
 
             println!("Relevant blockers:");
-            BoardHelper::print_mask(&(blockers & direction.blockers()[square as usize]));
+            BoardHelper::print_mask(&(blockers & direction.all_blockers()[square as usize]));
             println!();
 
             println!("Moves from A1:");
