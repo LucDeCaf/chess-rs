@@ -1,11 +1,15 @@
 use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
+use crate::move_gen::MoveGen;
 use crate::moves::{Move, MoveError};
 use crate::piece::{Color, Piece};
 use crate::square::Square;
 
+// Starting position
+pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 #[derive(Debug)]
-pub struct Bitboard {
+struct Bitboard {
     mask: Mask,
     piece: Piece,
 }
@@ -13,34 +17,34 @@ pub struct Bitboard {
 #[derive(Debug)]
 pub struct Board {
     // Game data
-    pub current_turn: Color,
+    current_turn: Color,
 
     // White pieces
-    pub white_pawns: Bitboard,
-    pub white_knights: Bitboard,
-    pub white_bishops: Bitboard,
-    pub white_rooks: Bitboard,
-    pub white_queens: Bitboard,
-    pub white_kings: Bitboard,
+    white_pawns: Bitboard,
+    white_knights: Bitboard,
+    white_bishops: Bitboard,
+    white_rooks: Bitboard,
+    white_queens: Bitboard,
+    white_kings: Bitboard,
 
     // Black pieces
-    pub black_pawns: Bitboard,
-    pub black_knights: Bitboard,
-    pub black_bishops: Bitboard,
-    pub black_rooks: Bitboard,
-    pub black_queens: Bitboard,
-    pub black_kings: Bitboard,
+    black_pawns: Bitboard,
+    black_knights: Bitboard,
+    black_bishops: Bitboard,
+    black_rooks: Bitboard,
+    black_queens: Bitboard,
+    black_kings: Bitboard,
 
     // Piece move tables (to be optimised)
-    pub white_pawn_move_masks: [Mask; 64],
-    pub black_pawn_move_masks: [Mask; 64],
-    pub white_pawn_capture_masks: [Mask; 64],
-    pub black_pawn_capture_masks: [Mask; 64],
-    pub knight_move_masks: [Mask; 64],
-    pub bishop_move_masks: [Mask; 64],
-    pub rook_move_masks: [Mask; 64],
-    pub queen_move_masks: [Mask; 64], // queen_move_masks[i] == rook_move_masks[i] | bishop_move_masks[i]
-    pub king_move_masks: [Mask; 64],
+    white_pawn_move_masks: [Mask; 64],
+    black_pawn_move_masks: [Mask; 64],
+    white_pawn_capture_masks: [Mask; 64],
+    black_pawn_capture_masks: [Mask; 64],
+    knight_move_masks: [Mask; 64],
+    king_move_masks: [Mask; 64],
+
+    // Sliding piece magic bitboard helper struct
+    sliding_move_generator: MoveGen,
 }
 
 #[allow(unused)]
@@ -114,10 +118,8 @@ impl Board {
             white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
             black_pawn_capture_masks: BoardHelper::generate_black_pawn_capture_masks(),
             knight_move_masks: BoardHelper::generate_knight_move_masks(),
-            bishop_move_masks,
-            rook_move_masks,
-            queen_move_masks,
             king_move_masks: BoardHelper::generate_king_move_masks(),
+            sliding_move_generator: MoveGen::init(),
         };
 
         board
@@ -152,7 +154,7 @@ impl Board {
                         // Add piece
                         'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
                             let piece_type = BoardHelper::char_to_piece(ch).unwrap();
-                            let bitboard = self.piece_mask_mut(&piece_type);
+                            let bitboard = self.bitboard_mut(piece_type);
                             bitboard.mask.0 |= 1 << (current_pos + i * 8);
                             current_pos += 1;
                         }
@@ -181,21 +183,19 @@ impl Board {
         };
     }
 
-    fn move_masks<'a>(&'a self, piece: &Piece) -> &[Mask; 64] {
+    fn move_masks(&self, piece: Piece) -> Option<Vec<Mask>> {
         match piece {
             Piece::Pawn(color) => match color {
-                Color::White => &self.white_pawn_move_masks,
-                Color::Black => &self.black_pawn_move_masks,
+                Color::White => Some(Vec::from_iter(self.white_pawn_move_masks)),
+                Color::Black => Some(Vec::from_iter(self.black_pawn_move_masks)),
             },
-            Piece::Knight(_) => &self.knight_move_masks,
-            Piece::Bishop(_) => &self.bishop_move_masks,
-            Piece::Rook(_) => &self.rook_move_masks,
-            Piece::Queen(_) => &self.queen_move_masks,
-            Piece::King(_) => &self.king_move_masks,
+            Piece::Knight(_) => Some(Vec::from_iter(self.knight_move_masks)),
+            Piece::King(_) => Some(Vec::from_iter(self.king_move_masks)),
+            _ => None,
         }
     }
 
-    fn piece_mask_mut<'a>(&'a mut self, piece: &Piece) -> &'a mut Bitboard {
+    fn bitboard_mut<'a>(&'a mut self, piece: Piece) -> &'a mut Bitboard {
         match piece {
             Piece::Pawn(color) => match color {
                 Color::White => &mut self.white_pawns,
@@ -224,7 +224,7 @@ impl Board {
         }
     }
 
-    fn piece_mask<'a>(&'a self, piece: &Piece) -> &'a Bitboard {
+    fn bitboard<'a>(&'a self, piece: Piece) -> &'a Bitboard {
         match piece {
             Piece::Pawn(color) => match color {
                 Color::White => &self.white_pawns,
@@ -261,7 +261,7 @@ impl Board {
 
         // Move piece on its bitboard
         if let Some(from_piece) = self.piece_at_square(mv.from) {
-            let from_bitboard = self.piece_mask_mut(&from_piece);
+            let from_bitboard = self.bitboard_mut(from_piece);
             from_bitboard.mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
         } else {
             return Err(MoveError);
@@ -269,7 +269,7 @@ impl Board {
 
         // Remove piece on target bitboard
         if let Some(to_piece) = self.piece_at_square(mv.to) {
-            let to_bitboard = self.piece_mask_mut(&to_piece);
+            let to_bitboard = self.bitboard_mut(to_piece);
             to_bitboard.mask.0 &= !(1 << mv.to as usize);
         }
 
@@ -287,7 +287,7 @@ impl Board {
         self.swap_current_turn();
     }
 
-    fn piece_bitboards<'a>(&'a self) -> [&'a Bitboard; 12] {
+    fn bitboards<'a>(&'a self) -> [&'a Bitboard; 12] {
         [
             &self.white_pawns,
             &self.white_knights,
@@ -343,7 +343,7 @@ impl Board {
     pub fn piece_at_square(&self, square: Square) -> Option<Piece> {
         let shift = square as usize;
 
-        for bitboard in self.piece_bitboards() {
+        for bitboard in self.bitboards() {
             if bitboard.mask.0 << shift == 1 {
                 return Some(bitboard.piece);
             }
@@ -352,27 +352,65 @@ impl Board {
         None
     }
 
-    pub fn get_pseudo(&self, piece: &Piece) -> Vec<Move> {
-        let mut moves = vec![];
-        let bitboard = self.piece_mask(piece);
-        dbg!(&bitboard);
-        let squares = bitboard.mask.ones(); // Wrong result!
-        dbg!(&squares);
+    pub fn get_pseudolegal_moves(&self, square: Square) -> Option<(Vec<Move>, Piece)> {
+        let mut moves = Vec::new();
+        let blockers = self.all_pieces_mask();
+
+        let piece = self.piece_at_square(square)?;
         let color = piece.color();
 
-        for piece_position in squares {
-            let move_mask = self.move_masks(piece)[piece_position as usize];
-            let targets = move_mask & !self.friendly_pieces_mask(color);
+        // Prevent moving pieces of the wrong colour
+        if color != self.current_turn {
+            return None;
+        }
 
-            for target in targets.ones() {
-                moves.push(Move {
-                    from: piece_position,
-                    to: target,
-                })
+        let bitboard = self.bitboard(piece);
+
+        let mut move_mask: Mask;
+
+        if bitboard.piece.is_slider() {
+            move_mask = Mask(0);
+
+            // Orthogonal sliding moves
+            match bitboard.piece {
+                Piece::Rook(_) | Piece::Queen(_) => {
+                    move_mask |= self.sliding_move_generator.get_rook_moves(square, blockers);
+                }
+                _ => (),
+            }
+
+            // Diagonal sliding moves
+            match bitboard.piece {
+                Piece::Bishop(_) | Piece::Queen(_) => {
+                    move_mask |= self
+                        .sliding_move_generator
+                        .get_bishop_moves(square, blockers);
+                }
+                _ => (),
+            }
+
+            moves.append(&mut Move::from_move_mask(square, move_mask));
+        } else {
+            // Grab move mask for the piece at the current square
+            move_mask = self.move_masks(piece)?[square.to_shift()];
+
+            // Handle potential pawn captures
+            if let Piece::Pawn(_) = piece {
+                match color {
+                    Color::White => {
+                        move_mask |= (self.white_pawn_capture_masks[square.to_shift()] & blockers)
+                    }
+                    Color::Black => {
+                        move_mask |= (self.black_pawn_capture_masks[square.to_shift()] & blockers)
+                    }
+                }
             }
         }
 
-        moves
+        // Filter out moves that capture one's own pieces
+        move_mask &= !self.friendly_pieces_mask(color);
+
+        Some((moves, piece))
     }
 
     fn clear_pieces(&mut self) {
@@ -431,16 +469,18 @@ impl Board {
 mod board_tests {
     use super::*;
 
-    const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
     #[test]
-    fn test_get_pseudo() {
-        // Setup board
+    fn test() {
         let mut board = Board::new();
         board.load_from_fen(START_FEN);
 
-        BoardHelper::print_mask(&board.black_kings.mask);
+        board
+            .make_move(&Move {
+                from: Square::G1,
+                to: Square::F3,
+            })
+            .unwrap();
 
-        dbg!(&board.get_pseudo(&Piece::King(Color::Black)));
+        dbg!(&board);
     }
 }

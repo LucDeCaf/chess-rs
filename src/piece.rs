@@ -33,6 +33,13 @@ impl Piece {
             | Self::King(color) => *color,
         }
     }
+
+    pub fn is_slider(&self) -> bool {
+        match self {
+            Piece::Queen(_) | Piece::Rook(_) | Piece::Bishop(_) => true,
+            Piece::King(_) | Piece::Knight(_) | Piece::Pawn(_) => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

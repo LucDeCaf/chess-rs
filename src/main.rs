@@ -1,8 +1,5 @@
-use chess::board::Board;
+use chess::board::{Board, START_FEN};
 use chess::moves::Move;
-
-// Starting position
-const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 #[derive(Debug, PartialEq, Eq)]
 enum Command {
