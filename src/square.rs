@@ -69,9 +69,73 @@ pub enum Square {
     H8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Rank {
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+}
+
+impl Rank {
+    pub fn from_u8(val: u8) -> Option<Self> {
+        match val {
+            0 => Some(Rank::One),
+            1 => Some(Rank::Two),
+            2 => Some(Rank::Three),
+            3 => Some(Rank::Four),
+            4 => Some(Rank::Five),
+            5 => Some(Rank::Six),
+            6 => Some(Rank::Seven),
+            7 => Some(Rank::Eight),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum File {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+}
+
+impl File {
+    pub fn from_u8(val: u8) -> Option<Self> {
+        match val {
+            0 => Some(File::A),
+            1 => Some(File::B),
+            2 => Some(File::C),
+            3 => Some(File::D),
+            4 => Some(File::E),
+            5 => Some(File::F),
+            6 => Some(File::G),
+            7 => Some(File::H),
+            _ => None,
+        }
+    }
+}
+
 impl Square {
     pub fn mask(&self) -> Mask {
         Mask(1 << *self as u8)
+    }
+
+    pub fn rank(&self) -> Rank {
+        Rank::from_u8(*self as u8 / 8).unwrap()
+    }
+
+    pub fn file(&self) -> File {
+        File::from_u8(*self as u8 % 8).unwrap()
     }
 
     pub fn from_u8(val: u8) -> Option<Self> {
@@ -313,5 +377,55 @@ impl Square {
             Self::G8 => 62,
             Self::H8 => 63,
         }
+    }
+}
+
+#[cfg(test)]
+mod square_tests {
+    use super::*;
+
+    #[test]
+    fn test_ranks_and_files() {
+        let ranks = vec![
+            Some(Rank::One),
+            Some(Rank::Two),
+            Some(Rank::Three),
+            Some(Rank::Four),
+            Some(Rank::Five),
+            Some(Rank::Six),
+            Some(Rank::Seven),
+            Some(Rank::Eight),
+        ];
+
+        let files = vec![
+            Some(File::A),
+            Some(File::B),
+            Some(File::C),
+            Some(File::D),
+            Some(File::E),
+            Some(File::F),
+            Some(File::G),
+            Some(File::H),
+        ];
+
+        for i in 0..8 {
+            assert_eq!(Rank::from_u8(i as u8), ranks[i]);
+            assert_eq!(File::from_u8(i as u8), files[i]);
+        }
+    }
+
+    #[test]
+    fn test_square_to_rank() {
+        let square = Square::E4;
+        assert_eq!(square.file(), File::E);
+        assert_eq!(square.rank(), Rank::Four);
+
+        let square = Square::H8;
+        assert_eq!(square.file(), File::H);
+        assert_eq!(square.rank(), Rank::Eight);
+
+        let square = Square::C1;
+        assert_eq!(square.file(), File::C);
+        assert_eq!(square.rank(), Rank::One);
     }
 }
