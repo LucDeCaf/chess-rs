@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::mask::Mask;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -364,6 +366,14 @@ impl Rank {
             _ => None,
         }
     }
+
+    pub fn plus(&self, val: u8) -> Option<Self> {
+        Self::from_u8(*self as u8 + val)
+    }
+
+    pub fn minus(&self, val: u8) -> Option<Self> {
+        Self::from_u8(*self as u8 - val)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -391,6 +401,14 @@ impl File {
             7 => Some(File::H),
             _ => None,
         }
+    }
+
+    pub fn plus(&self, val: u8) -> Option<Self> {
+        Self::from_u8(*self as u8 + val)
+    }
+
+    pub fn minus(&self, val: u8) -> Option<Self> {
+        Self::from_u8(*self as u8 - val)
     }
 }
 #[cfg(test)]
