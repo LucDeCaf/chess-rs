@@ -69,62 +69,6 @@ pub enum Square {
     H8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Rank {
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-}
-
-impl Rank {
-    pub fn from_u8(val: u8) -> Option<Self> {
-        match val {
-            0 => Some(Rank::One),
-            1 => Some(Rank::Two),
-            2 => Some(Rank::Three),
-            3 => Some(Rank::Four),
-            4 => Some(Rank::Five),
-            5 => Some(Rank::Six),
-            6 => Some(Rank::Seven),
-            7 => Some(Rank::Eight),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum File {
-    A,
-    B,
-    C,
-    D,
-    E,
-    F,
-    G,
-    H,
-}
-
-impl File {
-    pub fn from_u8(val: u8) -> Option<Self> {
-        match val {
-            0 => Some(File::A),
-            1 => Some(File::B),
-            2 => Some(File::C),
-            3 => Some(File::D),
-            4 => Some(File::E),
-            5 => Some(File::F),
-            6 => Some(File::G),
-            7 => Some(File::H),
-            _ => None,
-        }
-    }
-}
-
 impl Square {
     pub fn mask(&self) -> Mask {
         Mask(1 << *self as u8)
@@ -238,6 +182,20 @@ impl Square {
         }
 
         Self::from_u8(val as u8)
+    }
+
+    pub fn from_mask(mask: Mask) -> Option<Self> {
+        let ones = mask.ones();
+
+        if ones.len() != 1 {
+            return None;
+        }
+
+        Self::from_u8(ones[0].to_shift() as u8)
+    }
+
+    pub fn from_coords(rank: Rank, file: File) -> Self {
+        Self::from_u8(rank as u8 * 8 + file as u8).unwrap()
     }
 
     pub fn from_str(input: &str) -> Option<Self> {
@@ -380,6 +338,61 @@ impl Square {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Rank {
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+}
+
+impl Rank {
+    pub fn from_u8(val: u8) -> Option<Self> {
+        match val {
+            0 => Some(Rank::One),
+            1 => Some(Rank::Two),
+            2 => Some(Rank::Three),
+            3 => Some(Rank::Four),
+            4 => Some(Rank::Five),
+            5 => Some(Rank::Six),
+            6 => Some(Rank::Seven),
+            7 => Some(Rank::Eight),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum File {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+}
+
+impl File {
+    pub fn from_u8(val: u8) -> Option<Self> {
+        match val {
+            0 => Some(File::A),
+            1 => Some(File::B),
+            2 => Some(File::C),
+            3 => Some(File::D),
+            4 => Some(File::E),
+            5 => Some(File::F),
+            6 => Some(File::G),
+            7 => Some(File::H),
+            _ => None,
+        }
+    }
+}
 #[cfg(test)]
 mod square_tests {
     use super::*;
@@ -427,5 +440,53 @@ mod square_tests {
         let square = Square::C1;
         assert_eq!(square.file(), File::C);
         assert_eq!(square.rank(), Rank::One);
+    }
+
+    #[test]
+    fn square_from_coords() {
+        let pairs = vec![
+            (Rank::One, File::A),
+            (Rank::Three, File::B),
+            (Rank::One, File::C),
+            (Rank::Four, File::D),
+            (Rank::Eight, File::E),
+            (Rank::Eight, File::F),
+            (Rank::Five, File::G),
+            (Rank::Two, File::H),
+        ];
+
+        let expected = vec![
+            Square::A1,
+            Square::B3,
+            Square::C1,
+            Square::D4,
+            Square::E8,
+            Square::F8,
+            Square::G5,
+            Square::H2,
+        ];
+
+        for (i, (rank, file)) in pairs.into_iter().enumerate() {
+            assert_eq!(Square::from_coords(rank, file), expected[i]);
+        }
+    }
+
+    #[test]
+    fn square_from_mask() {
+        let squares = vec![
+            Square::A1,
+            Square::E3,
+            Square::H1,
+            Square::F4,
+            Square::A8,
+            Square::C8,
+            Square::E7,
+            Square::F7,
+        ];
+
+        for square in squares {
+            let mask = square.mask();
+            assert_eq!(square, Square::from_mask(mask).unwrap());
+        }
     }
 }
