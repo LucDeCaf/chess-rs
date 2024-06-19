@@ -3,23 +3,22 @@ use crate::mask::Mask;
 use crate::move_gen::MoveGen;
 use crate::moves::Move;
 use crate::piece::{Color, Piece};
-use crate::square::Square;
+use crate::square::{Rank, Square};
 
 // Starting position
 pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Bitboard {
     mask: Mask,
     piece: Piece,
 }
 
-#[derive(Debug)]
+/// Stores all the necessary data to recreate a position on a Board
+#[derive(Debug, Clone)]
 pub struct BoardState {
-    // Game data
     current_turn: Color,
 
-    // White pieces
     white_pawns: Bitboard,
     white_knights: Bitboard,
     white_bishops: Bitboard,
@@ -27,13 +26,15 @@ pub struct BoardState {
     white_queens: Bitboard,
     white_kings: Bitboard,
 
-    // Black pieces
     black_pawns: Bitboard,
     black_knights: Bitboard,
     black_bishops: Bitboard,
     black_rooks: Bitboard,
     black_queens: Bitboard,
     black_kings: Bitboard,
+
+    // Used to check if en passant is possible
+    prev_move: Option<Move>,
 }
 
 impl BoardState {
@@ -89,6 +90,7 @@ impl BoardState {
                 mask: Mask(0),
                 piece: Piece::King(Color::Black),
             },
+            prev_move: None,
         }
     }
 }
@@ -186,7 +188,7 @@ impl Board {
         {
             "w" => Color::White,
             "b" => Color::Black,
-            _ => panic!("Second section of FEN string should be either 'w' or 'b'."),
+            _ => panic!("Second segment of FEN string should be either 'w' or 'b'."),
         };
     }
 
@@ -281,6 +283,8 @@ impl Board {
             from_bitboard.mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
         }
 
+        self.state.prev_move = Some(mv);
+
         self.swap_current_turn();
     }
 
@@ -291,6 +295,9 @@ impl Board {
         };
 
         self.make_move(reverse_move);
+
+        self.state.prev_move = None;
+
         self.swap_current_turn();
     }
 
@@ -361,15 +368,10 @@ impl Board {
     }
 
     pub fn piece_at_square(&self, square: Square) -> Option<Piece> {
-        let shift = square as usize;
-
         for bitboard in self.bitboards() {
-            if bitboard.mask.0 & 1 << shift > 0 {
+            if bitboard.mask.0 & 1 << square as u8 > 0 {
                 return Some(bitboard.piece);
             }
-            // if bitboard.mask.0 << shift == 1 {
-            //     return Some(bitboard.piece);
-            // }
         }
 
         None
@@ -377,6 +379,7 @@ impl Board {
 
     pub fn get_pseudolegal_move_mask(&self, square: Square) -> Option<(Mask, Piece)> {
         let blockers = self.all_pieces_mask();
+        let tile_mask = square.mask();
 
         let piece = self.piece_at_square(square)?;
         let color = piece.color();
@@ -408,8 +411,8 @@ impl Board {
             // Grab move mask for the piece at the current square
             move_mask = self.move_masks(piece)?[square.to_shift()];
 
-            // Handle potential pawn captures
             if let Piece::Pawn(_) = piece {
+                // Handle pawn captures
                 match color {
                     Color::White => {
                         move_mask |= (self.white_pawn_capture_masks[square.to_shift()] & blockers)
@@ -418,6 +421,9 @@ impl Board {
                         move_mask |= (self.black_pawn_capture_masks[square.to_shift()] & blockers)
                     }
                 }
+
+                // Handle en passant
+                todo!();
             }
         }
 
