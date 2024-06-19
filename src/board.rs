@@ -15,7 +15,7 @@ struct Bitboard {
 }
 
 #[derive(Debug)]
-pub struct Board {
+pub struct BoardState {
     // Game data
     current_turn: Color,
 
@@ -34,34 +34,11 @@ pub struct Board {
     black_rooks: Bitboard,
     black_queens: Bitboard,
     black_kings: Bitboard,
-
-    // Piece move tables (to be optimised)
-    white_pawn_move_masks: [Mask; 64],
-    black_pawn_move_masks: [Mask; 64],
-    white_pawn_capture_masks: [Mask; 64],
-    black_pawn_capture_masks: [Mask; 64],
-    knight_move_masks: [Mask; 64],
-    king_move_masks: [Mask; 64],
-
-    // Sliding piece magic bitboard helper struct
-    sliding_move_generator: MoveGen,
 }
 
-#[allow(unused)]
-impl Board {
-    pub fn new() -> Self {
-        // Use rook and bishop masks to generate queen masks
-        let bishop_move_masks = BoardHelper::generate_bishop_move_masks();
-        let rook_move_masks = BoardHelper::generate_rook_move_masks();
-
-        let mut i = 0;
-        let queen_move_masks = bishop_move_masks.clone().map(|bishop_mask| {
-            let queen_mask = Mask(bishop_mask.0.clone() | rook_move_masks[i].0.clone());
-            i += 1;
-            queen_mask
-        });
-
-        let board = Board {
+impl BoardState {
+    pub fn init() -> Self {
+        Self {
             current_turn: Color::White,
 
             white_pawns: Bitboard {
@@ -112,7 +89,43 @@ impl Board {
                 mask: Mask(0),
                 piece: Piece::King(Color::Black),
             },
+        }
+    }
+}
 
+#[derive(Debug)]
+pub struct Board {
+    // Game state
+    state: BoardState,
+
+    // Piece move tables (to be optimised)
+    white_pawn_move_masks: [Mask; 64],
+    black_pawn_move_masks: [Mask; 64],
+    white_pawn_capture_masks: [Mask; 64],
+    black_pawn_capture_masks: [Mask; 64],
+    knight_move_masks: [Mask; 64],
+    king_move_masks: [Mask; 64],
+
+    // Sliding piece magic bitboard helper struct
+    sliding_move_generator: MoveGen,
+}
+
+#[allow(unused)]
+impl Board {
+    pub fn new() -> Self {
+        // Use rook and bishop masks to generate queen masks
+        let bishop_move_masks = BoardHelper::generate_bishop_move_masks();
+        let rook_move_masks = BoardHelper::generate_rook_move_masks();
+
+        let mut i = 0;
+        let queen_move_masks = bishop_move_masks.clone().map(|bishop_mask| {
+            let queen_mask = Mask(bishop_mask.0.clone() | rook_move_masks[i].0.clone());
+            i += 1;
+            queen_mask
+        });
+
+        let board = Board {
+            state: BoardState::init(),
             white_pawn_move_masks: BoardHelper::generate_white_pawn_move_masks(),
             black_pawn_move_masks: BoardHelper::generate_black_pawn_move_masks(),
             white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
@@ -169,7 +182,8 @@ impl Board {
         }
 
         // Check whose turn it is
-        self.current_turn = match segments.next().expect("FEN string should have 6 segments") {
+        self.state.current_turn = match segments.next().expect("FEN string should have 6 segments")
+        {
             "w" => Color::White,
             "b" => Color::Black,
             _ => panic!("Second section of FEN string should be either 'w' or 'b'."),
@@ -177,7 +191,7 @@ impl Board {
     }
 
     pub fn swap_current_turn(&mut self) {
-        self.current_turn = match self.current_turn {
+        self.state.current_turn = match self.state.current_turn {
             Color::White => Color::Black,
             Color::Black => Color::White,
         };
@@ -198,28 +212,28 @@ impl Board {
     fn bitboard_mut<'a>(&'a mut self, piece: Piece) -> &'a mut Bitboard {
         match piece {
             Piece::Pawn(color) => match color {
-                Color::White => &mut self.white_pawns,
-                Color::Black => &mut self.black_pawns,
+                Color::White => &mut self.state.white_pawns,
+                Color::Black => &mut self.state.black_pawns,
             },
             Piece::Knight(color) => match color {
-                Color::White => &mut self.white_knights,
-                Color::Black => &mut self.black_knights,
+                Color::White => &mut self.state.white_knights,
+                Color::Black => &mut self.state.black_knights,
             },
             Piece::Bishop(color) => match color {
-                Color::White => &mut self.white_bishops,
-                Color::Black => &mut self.black_bishops,
+                Color::White => &mut self.state.white_bishops,
+                Color::Black => &mut self.state.black_bishops,
             },
             Piece::Rook(color) => match color {
-                Color::White => &mut self.white_rooks,
-                Color::Black => &mut self.black_rooks,
+                Color::White => &mut self.state.white_rooks,
+                Color::Black => &mut self.state.black_rooks,
             },
             Piece::Queen(color) => match color {
-                Color::White => &mut self.white_queens,
-                Color::Black => &mut self.black_queens,
+                Color::White => &mut self.state.white_queens,
+                Color::Black => &mut self.state.black_queens,
             },
             Piece::King(color) => match color {
-                Color::White => &mut self.white_kings,
-                Color::Black => &mut self.black_kings,
+                Color::White => &mut self.state.white_kings,
+                Color::Black => &mut self.state.black_kings,
             },
         }
     }
@@ -227,28 +241,28 @@ impl Board {
     fn bitboard<'a>(&'a self, piece: Piece) -> &'a Bitboard {
         match piece {
             Piece::Pawn(color) => match color {
-                Color::White => &self.white_pawns,
-                Color::Black => &self.black_pawns,
+                Color::White => &self.state.white_pawns,
+                Color::Black => &self.state.black_pawns,
             },
             Piece::Knight(color) => match color {
-                Color::White => &self.white_knights,
-                Color::Black => &self.black_knights,
+                Color::White => &self.state.white_knights,
+                Color::Black => &self.state.black_knights,
             },
             Piece::Bishop(color) => match color {
-                Color::White => &self.white_bishops,
-                Color::Black => &self.black_bishops,
+                Color::White => &self.state.white_bishops,
+                Color::Black => &self.state.black_bishops,
             },
             Piece::Rook(color) => match color {
-                Color::White => &self.white_rooks,
-                Color::Black => &self.black_rooks,
+                Color::White => &self.state.white_rooks,
+                Color::Black => &self.state.black_rooks,
             },
             Piece::Queen(color) => match color {
-                Color::White => &self.white_queens,
-                Color::Black => &self.black_queens,
+                Color::White => &self.state.white_queens,
+                Color::Black => &self.state.black_queens,
             },
             Piece::King(color) => match color {
-                Color::White => &self.white_kings,
-                Color::Black => &self.black_kings,
+                Color::White => &self.state.white_kings,
+                Color::Black => &self.state.black_kings,
             },
         }
     }
@@ -295,40 +309,40 @@ impl Board {
 
     fn bitboards<'a>(&'a self) -> [&'a Bitboard; 12] {
         [
-            &self.white_pawns,
-            &self.white_knights,
-            &self.white_bishops,
-            &self.white_rooks,
-            &self.white_queens,
-            &self.white_kings,
-            &self.black_pawns,
-            &self.black_knights,
-            &self.black_bishops,
-            &self.black_rooks,
-            &self.black_queens,
-            &self.black_kings,
+            &self.state.white_pawns,
+            &self.state.white_knights,
+            &self.state.white_bishops,
+            &self.state.white_rooks,
+            &self.state.white_queens,
+            &self.state.white_kings,
+            &self.state.black_pawns,
+            &self.state.black_knights,
+            &self.state.black_bishops,
+            &self.state.black_rooks,
+            &self.state.black_queens,
+            &self.state.black_kings,
         ]
     }
 
     fn white_pieces<'a>(&'a self) -> [&'a Bitboard; 6] {
         [
-            &self.white_pawns,
-            &self.white_knights,
-            &self.white_bishops,
-            &self.white_rooks,
-            &self.white_queens,
-            &self.white_kings,
+            &self.state.white_pawns,
+            &self.state.white_knights,
+            &self.state.white_bishops,
+            &self.state.white_rooks,
+            &self.state.white_queens,
+            &self.state.white_kings,
         ]
     }
 
     fn black_pieces<'a>(&'a self) -> [&'a Bitboard; 6] {
         [
-            &self.black_pawns,
-            &self.black_knights,
-            &self.black_bishops,
-            &self.black_rooks,
-            &self.black_queens,
-            &self.black_kings,
+            &self.state.black_pawns,
+            &self.state.black_knights,
+            &self.state.black_bishops,
+            &self.state.black_rooks,
+            &self.state.black_queens,
+            &self.state.black_kings,
         ]
     }
 
@@ -368,7 +382,7 @@ impl Board {
         let color = piece.color();
 
         // Prevent moving pieces of the wrong colour
-        if color != self.current_turn {
+        if color != self.state.current_turn {
             return None;
         }
 
@@ -379,16 +393,10 @@ impl Board {
         if bitboard.piece.is_slider() {
             move_mask = Mask(0);
 
-            // Orthogonal sliding moves
             match bitboard.piece {
                 Piece::Rook(_) | Piece::Queen(_) => {
                     move_mask |= self.sliding_move_generator.get_rook_moves(square, blockers);
                 }
-                _ => (),
-            }
-
-            // Diagonal sliding moves
-            match bitboard.piece {
                 Piece::Bishop(_) | Piece::Queen(_) => {
                     move_mask |= self
                         .sliding_move_generator
@@ -425,18 +433,18 @@ impl Board {
     }
 
     fn clear_pieces(&mut self) {
-        self.white_pawns.mask.0 = 0;
-        self.white_knights.mask.0 = 0;
-        self.white_bishops.mask.0 = 0;
-        self.white_rooks.mask.0 = 0;
-        self.white_queens.mask.0 = 0;
-        self.white_kings.mask.0 = 0;
-        self.black_pawns.mask.0 = 0;
-        self.black_knights.mask.0 = 0;
-        self.black_bishops.mask.0 = 0;
-        self.black_rooks.mask.0 = 0;
-        self.black_queens.mask.0 = 0;
-        self.black_kings.mask.0 = 0;
+        self.state.white_pawns.mask.0 = 0;
+        self.state.white_knights.mask.0 = 0;
+        self.state.white_bishops.mask.0 = 0;
+        self.state.white_rooks.mask.0 = 0;
+        self.state.white_queens.mask.0 = 0;
+        self.state.white_kings.mask.0 = 0;
+        self.state.black_pawns.mask.0 = 0;
+        self.state.black_knights.mask.0 = 0;
+        self.state.black_bishops.mask.0 = 0;
+        self.state.black_rooks.mask.0 = 0;
+        self.state.black_queens.mask.0 = 0;
+        self.state.black_kings.mask.0 = 0;
     }
 
     fn all_pieces_mask(&self) -> Mask {
@@ -444,21 +452,21 @@ impl Board {
     }
 
     fn black_pieces_mask(&self) -> Mask {
-        self.black_pawns.mask
-            | self.black_knights.mask
-            | self.black_bishops.mask
-            | self.black_rooks.mask
-            | self.black_queens.mask
-            | self.black_kings.mask
+        self.state.black_pawns.mask
+            | self.state.black_knights.mask
+            | self.state.black_bishops.mask
+            | self.state.black_rooks.mask
+            | self.state.black_queens.mask
+            | self.state.black_kings.mask
     }
 
     fn white_pieces_mask(&self) -> Mask {
-        self.white_pawns.mask
-            | self.white_knights.mask
-            | self.white_bishops.mask
-            | self.white_rooks.mask
-            | self.white_queens.mask
-            | self.white_kings.mask
+        self.state.white_pawns.mask
+            | self.state.white_knights.mask
+            | self.state.white_bishops.mask
+            | self.state.white_rooks.mask
+            | self.state.white_queens.mask
+            | self.state.white_kings.mask
     }
 
     fn friendly_pieces_mask(&self, color: Color) -> Mask {
@@ -497,5 +505,7 @@ mod board_tests {
         }
 
         board.all_pieces_mask().print();
+
+        board.unmake_move(mv);
     }
 }
