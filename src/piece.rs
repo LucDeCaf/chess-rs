@@ -1,6 +1,6 @@
 use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
-use crate::move_gen;
+use crate::move_gen::move_gen;
 use crate::square::Square;
 
 pub const KNIGHT_MOVE_OFFSETS: [i8; 8] = [15, 17, 6, 10, -10, -6, -17, -15];

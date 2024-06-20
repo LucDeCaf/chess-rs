@@ -1,9 +1,11 @@
 use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
-use crate::move_gen::MoveGen;
-use crate::move_masks::{
-    BLACK_PAWN_CAPTURE_MASKS, BLACK_PAWN_MOVE_MASKS, KING_MOVE_MASKS, KNIGHT_MOVE_MASKS,
-    WHITE_PAWN_CAPTURE_MASKS, WHITE_PAWN_MOVE_MASKS,
+use crate::move_gen::{
+    masks::{
+        BLACK_PAWN_CAPTURE_MASKS, BLACK_PAWN_MOVE_MASKS, KING_MOVE_MASKS, KNIGHT_MOVE_MASKS,
+        WHITE_PAWN_CAPTURE_MASKS, WHITE_PAWN_MOVE_MASKS,
+    },
+    move_gen::MoveGen,
 };
 use crate::moves::{Move, MoveError};
 use crate::piece::{Color, Piece};

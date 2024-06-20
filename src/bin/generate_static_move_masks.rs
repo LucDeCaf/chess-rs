@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs};
 
-use chess::{mask::Mask, move_gen};
+use chess::{mask::Mask, move_gen::move_gen};
 
 fn main() -> std::io::Result<()> {
     let mut move_masks: HashMap<String, [Mask; 64]> = HashMap::new();
