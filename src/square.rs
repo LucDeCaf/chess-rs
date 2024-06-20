@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use crate::mask::Mask;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,6 +80,10 @@ impl Square {
 
     pub fn file(&self) -> File {
         File::from_u8(*self as u8 % 8).unwrap()
+    }
+
+    pub fn coords(&self) -> (Rank, File) {
+        (self.rank(), self.file())
     }
 
     pub fn from_u8(val: u8) -> Option<Self> {
@@ -374,6 +376,10 @@ impl Rank {
     pub fn minus(&self, val: u8) -> Option<Self> {
         Self::from_u8(*self as u8 - val)
     }
+
+    pub fn diff(&self, rhs: Rank) -> u8 {
+        (*self as u8).abs_diff(rhs as u8)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -409,6 +415,10 @@ impl File {
 
     pub fn minus(&self, val: u8) -> Option<Self> {
         Self::from_u8(*self as u8 - val)
+    }
+
+    pub fn diff(&self, rhs: File) -> u8 {
+        (*self as u8).abs_diff(rhs as u8)
     }
 }
 #[cfg(test)]

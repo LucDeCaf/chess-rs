@@ -24,6 +24,14 @@ impl Move {
 
         moves
     }
+
+    pub fn rank_diff(&self) -> u8 {
+        self.to.rank().diff(self.from.rank())
+    }
+
+    pub fn file_diff(&self) -> u8 {
+        self.to.file().diff(self.from.file())
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -38,7 +38,7 @@ pub struct BoardState {
 }
 
 impl BoardState {
-    pub fn init() -> Self {
+    pub fn new() -> Self {
         Self {
             current_turn: Color::White,
 
@@ -127,7 +127,7 @@ impl Board {
         });
 
         let board = Board {
-            state: BoardState::init(),
+            state: BoardState::new(),
             white_pawn_move_masks: BoardHelper::generate_white_pawn_move_masks(),
             black_pawn_move_masks: BoardHelper::generate_black_pawn_move_masks(),
             white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
@@ -301,6 +301,42 @@ impl Board {
         self.swap_current_turn();
     }
 
+    pub fn possible_en_passant(&self) -> bool {
+        let current_turn = self.state.current_turn;
+        let Some(last_move) = self.state.prev_move else {
+            return false;
+        };
+
+        let rank_diff = last_move.rank_diff();
+        let file_diff = last_move.file_diff();
+        if rank_diff != 2 || file_diff != 0 {
+            return false;
+        }
+
+        return current_turn == Color::White && last_move.to.rank() == Rank::Five
+            || current_turn == Color::Black && last_move.to.rank() == Rank::Four;
+    }
+
+    pub fn en_passant_mask(&self) -> Option<Mask> {
+        let current_turn = self.state.current_turn;
+        let last_move = self.state.prev_move?;
+
+        let to_rank = last_move.to.rank();
+        let from_rank = last_move.from.rank();
+
+        if !self.possible_en_passant() {
+            return None;
+        }
+
+        let capture_rank = match current_turn {
+            Color::White => to_rank.plus(1)?,
+            Color::Black => to_rank.minus(1)?,
+        };
+        let capture_file = last_move.to.file();
+
+        Some(Square::from_coords(capture_rank, capture_file).mask())
+    }
+
     pub fn is_move_legal(&self, mv: Move) -> bool {
         // Prevent piece from moving to itself
         if mv.from == mv.to {
@@ -412,18 +448,20 @@ impl Board {
             move_mask = self.move_masks(piece)?[square.to_shift()];
 
             if let Piece::Pawn(_) = piece {
-                // Handle pawn captures
-                match color {
-                    Color::White => {
-                        move_mask |= (self.white_pawn_capture_masks[square.to_shift()] & blockers)
-                    }
-                    Color::Black => {
-                        move_mask |= (self.black_pawn_capture_masks[square.to_shift()] & blockers)
+                // Handle pawn captures and en passant
+                let capture_mask = match color {
+                    Color::White => self.white_pawn_capture_masks[square.to_shift()],
+                    Color::Black => self.black_pawn_capture_masks[square.to_shift()],
+                };
+
+                move_mask |= capture_mask & blockers;
+
+                if let Some(en_passant_mask) = self.en_passant_mask() {
+                    // If en passant mask can be found in capture mask
+                    if capture_mask & en_passant_mask != Mask(0) {
+                        move_mask |= en_passant_mask;
                     }
                 }
-
-                // Handle en passant
-                todo!();
             }
         }
 
@@ -495,23 +533,50 @@ mod board_tests {
     use super::*;
 
     #[test]
-    fn test() {
+    fn en_passant_legal_move() {
         let mut board = Board::new();
         board.load_from_fen(START_FEN);
 
-        let mv = Move {
+        board.make_move(Move {
+            from: Square::E2,
+            to: Square::E5,
+        });
+
+        board.make_move(Move {
+            from: Square::D7,
+            to: Square::D5,
+        });
+
+        assert!(board.is_move_legal(Move {
+            from: Square::E5,
+            to: Square::D6,
+        }));
+    }
+
+    #[test]
+    fn en_passant_mask() {
+        let mut board = Board::new();
+        board.load_from_fen(START_FEN);
+
+        board.make_move(Move {
             from: Square::E2,
             to: Square::E4,
-        };
+        });
 
-        if board.is_move_legal(mv) {
-            board.make_move(mv);
-        } else {
-            panic!("Move is illegal");
-        }
+        assert_eq!(board.en_passant_mask(), Some(Square::E3.mask()));
 
-        board.all_pieces_mask().print();
+        board.make_move(Move {
+            from: Square::E7,
+            to: Square::E5,
+        });
 
-        board.unmake_move(mv);
+        assert_eq!(board.en_passant_mask(), Some(Square::E6.mask()));
+
+        board.make_move(Move {
+            from: Square::G1,
+            to: Square::F3,
+        });
+
+        assert_eq!(board.en_passant_mask(), None);
     }
 }
