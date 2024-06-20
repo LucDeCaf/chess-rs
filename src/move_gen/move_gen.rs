@@ -1,13 +1,28 @@
 use std::array::from_fn;
 
 use crate::{
-    board_helper::BoardHelper,
     mask::Mask,
     piece::{Direction, BISHOP_MOVE_OFFSETS, KNIGHT_MOVE_OFFSETS, ROOK_MOVE_OFFSETS},
     square::Square,
 };
 
 use super::magics::{BISHOP_INDEX_BITS, BISHOP_MAGICS, ROOK_INDEX_BITS, ROOK_MAGICS};
+
+pub fn rank(i: usize) -> usize {
+    i / 8
+}
+
+pub fn file(i: usize) -> usize {
+    i % 8
+}
+
+pub fn rank_difference(rank: usize, tile: usize) -> usize {
+    rank.abs_diff(tile / 8)
+}
+
+pub fn file_difference(file: usize, tile: usize) -> usize {
+    file.abs_diff(tile % 8)
+}
 
 pub fn generate_white_pawn_move_masks() -> [Mask; 64] {
     let mut masks = [0; 64];
@@ -39,24 +54,19 @@ pub fn generate_black_pawn_move_masks() -> [Mask; 64] {
 
 pub fn generate_white_pawn_capture_masks() -> [Mask; 64] {
     let mut masks = [0; 64];
-    let (mut rank, mut file): (usize, usize);
     let mut mask: usize;
 
     for i in 8..56 {
         mask = 0;
 
-        rank = BoardHelper::rank(i);
-        file = BoardHelper::file(i);
+        let rank = rank(i);
+        let file = file(i);
 
-        if BoardHelper::rank_difference(rank, i + 9) == 1
-            && BoardHelper::file_difference(file, i + 9) == 1
-        {
+        if rank_difference(rank, i + 9) == 1 && file_difference(file, i + 9) == 1 {
             mask |= 1 << (i + 9);
         }
 
-        if BoardHelper::rank_difference(rank, i + 7) == 1
-            && BoardHelper::file_difference(file, i + 7) == 1
-        {
+        if rank_difference(rank, i + 7) == 1 && file_difference(file, i + 7) == 1 {
             mask |= 1 << (i + 7);
         }
 
@@ -68,27 +78,19 @@ pub fn generate_white_pawn_capture_masks() -> [Mask; 64] {
 
 pub fn generate_black_pawn_capture_masks() -> [Mask; 64] {
     let mut masks = [0; 64];
-    let mut rank;
-    let mut file;
     let mut mask: usize;
 
     for i in 8..56 {
         mask = 0;
 
-        rank = BoardHelper::rank(i);
-        file = BoardHelper::file(i);
+        let rank = rank(i);
+        let file = file(i);
 
-        if i >= 9
-            && BoardHelper::rank_difference(rank, i - 9) == 1
-            && BoardHelper::file_difference(file, i - 9) == 1
-        {
+        if i >= 9 && rank_difference(rank, i - 9) == 1 && file_difference(file, i - 9) == 1 {
             mask |= (1 << i) >> 9;
         }
 
-        if i >= 7
-            && BoardHelper::rank_difference(rank, i - 7) == 1
-            && BoardHelper::file_difference(file, i - 7) == 1
-        {
+        if i >= 7 && rank_difference(rank, i - 7) == 1 && file_difference(file, i - 7) == 1 {
             mask |= (1 << i) >> 7;
         }
 
@@ -104,19 +106,19 @@ pub fn generate_rook_move_masks() -> [Mask; 64] {
     for start in 0..64 {
         for offset in ROOK_MOVE_OFFSETS {
             let mut target = start as i8 + offset;
-            let mut prev_rank = BoardHelper::rank(start);
-            let mut prev_file = BoardHelper::file(start);
+            let mut prev_rank = rank(start);
+            let mut prev_file = file(start);
 
             while target >= 0 && target < 64 {
                 // If moving by offset wraps you around the board then stop
-                if BoardHelper::rank_difference(prev_rank, target as usize) > 1
-                    || BoardHelper::file_difference(prev_file, target as usize) > 1
+                if rank_difference(prev_rank, target as usize) > 1
+                    || file_difference(prev_file, target as usize) > 1
                 {
                     break;
                 }
 
-                prev_rank = BoardHelper::rank(target as usize);
-                prev_file = BoardHelper::file(target as usize);
+                prev_rank = rank(target as usize);
+                prev_file = file(target as usize);
 
                 masks[start] |= 1 << target;
                 target += offset;
@@ -133,18 +135,18 @@ pub fn generate_bishop_move_masks() -> [Mask; 64] {
     for start in 0..64 {
         for offset in BISHOP_MOVE_OFFSETS {
             let mut target = start as i8 + offset;
-            let mut prev_rank = BoardHelper::rank(start as usize);
-            let mut prev_file = BoardHelper::file(start as usize);
+            let mut prev_rank = rank(start as usize);
+            let mut prev_file = file(start as usize);
 
             while target >= 0 && target < 64 {
-                if BoardHelper::rank_difference(prev_rank, target as usize) > 1
-                    || BoardHelper::file_difference(prev_file, target as usize) > 1
+                if rank_difference(prev_rank, target as usize) > 1
+                    || file_difference(prev_file, target as usize) > 1
                 {
                     break;
                 }
 
-                prev_rank = BoardHelper::rank(target as usize);
-                prev_file = BoardHelper::file(target as usize);
+                prev_rank = rank(target as usize);
+                prev_file = file(target as usize);
 
                 masks[start] |= 1 << target;
                 target += offset;
@@ -159,8 +161,8 @@ pub fn generate_knight_move_masks() -> [Mask; 64] {
     let mut masks = [0; 64];
 
     for start in 0..64 {
-        let rank = BoardHelper::rank(start);
-        let file = BoardHelper::file(start);
+        let rank = rank(start);
+        let file = file(start);
 
         for offset in KNIGHT_MOVE_OFFSETS {
             let target = start as i8 + offset;
@@ -171,8 +173,8 @@ pub fn generate_knight_move_masks() -> [Mask; 64] {
 
             let target = target as usize;
 
-            let rank_diff = BoardHelper::rank_difference(rank, target);
-            let file_diff = BoardHelper::file_difference(file, target);
+            let rank_diff = rank_difference(rank, target);
+            let file_diff = file_difference(file, target);
 
             if !(rank_diff == 1 && file_diff == 2 || rank_diff == 2 && file_diff == 1) {
                 continue;
@@ -189,8 +191,8 @@ pub fn generate_king_move_masks() -> [Mask; 64] {
     let mut masks = [0; 64];
 
     for start in 0..64 {
-        let rank = BoardHelper::rank(start);
-        let file = BoardHelper::file(start);
+        let rank = rank(start);
+        let file = file(start);
 
         for offset_set in [ROOK_MOVE_OFFSETS, BISHOP_MOVE_OFFSETS] {
             for offset in offset_set {
@@ -202,9 +204,7 @@ pub fn generate_king_move_masks() -> [Mask; 64] {
 
                 let target = target as usize;
 
-                if BoardHelper::rank_difference(rank, target) > 1
-                    || BoardHelper::file_difference(file, target) > 1
-                {
+                if rank_difference(rank, target) > 1 || file_difference(file, target) > 1 {
                     continue;
                 }
 

@@ -1,6 +1,8 @@
-use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
-use crate::move_gen::move_gen;
+use crate::move_gen::move_gen::{
+    file, file_difference, generate_bishop_move_masks, generate_rook_move_masks, rank,
+    rank_difference,
+};
 use crate::square::Square;
 
 pub const KNIGHT_MOVE_OFFSETS: [i8; 8] = [15, 17, 6, 10, -10, -6, -17, -15];
@@ -64,13 +66,13 @@ impl Direction {
             0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000;
 
         let mut blockers = match self {
-            Self::Orthogonal => move_gen::generate_rook_move_masks(),
-            Self::Diagonal => move_gen::generate_bishop_move_masks(),
+            Self::Orthogonal => generate_rook_move_masks(),
+            Self::Diagonal => generate_bishop_move_masks(),
         };
 
         for (i, blocker) in blockers.iter_mut().enumerate() {
-            let rank = BoardHelper::rank(i);
-            let file = BoardHelper::file(i);
+            let rank = rank(i);
+            let file = file(i);
 
             let mut exclusion_mask = 0;
             if rank != 0 {
@@ -115,20 +117,17 @@ impl Direction {
 
         for offset in offsets {
             let mut target = square as i8 + offset;
-            let (mut prev_rank, mut prev_file) = (
-                BoardHelper::rank(square as usize),
-                BoardHelper::file(square as usize),
-            );
+            let (mut prev_rank, mut prev_file) = (rank(square as usize), file(square as usize));
 
             while target >= 0 && target < 64 {
                 // Prevent wrapping around edges
-                if BoardHelper::rank_difference(prev_rank, target as usize) > 1
-                    || BoardHelper::file_difference(prev_file, target as usize) > 1
+                if rank_difference(prev_rank, target as usize) > 1
+                    || file_difference(prev_file, target as usize) > 1
                 {
                     break;
                 }
-                prev_rank = BoardHelper::rank(target as usize);
-                prev_file = BoardHelper::file(target as usize);
+                prev_rank = rank(target as usize);
+                prev_file = file(target as usize);
 
                 // Add move to mask
                 movemask |= 1 << target;

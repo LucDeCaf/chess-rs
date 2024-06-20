@@ -1,4 +1,3 @@
-use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
 use crate::move_gen::{
     masks::{
@@ -455,6 +454,24 @@ impl Board {
         }
     }
 
+    fn char_to_piece(ch: char) -> Option<Piece> {
+        match ch {
+            'P' => Some(Piece::Pawn(Color::White)),
+            'N' => Some(Piece::Knight(Color::White)),
+            'B' => Some(Piece::Bishop(Color::White)),
+            'R' => Some(Piece::Rook(Color::White)),
+            'Q' => Some(Piece::Queen(Color::White)),
+            'K' => Some(Piece::King(Color::White)),
+            'p' => Some(Piece::Pawn(Color::Black)),
+            'n' => Some(Piece::Knight(Color::Black)),
+            'b' => Some(Piece::Bishop(Color::Black)),
+            'r' => Some(Piece::Rook(Color::Black)),
+            'q' => Some(Piece::Queen(Color::Black)),
+            'k' => Some(Piece::King(Color::Black)),
+            _ => None,
+        }
+    }
+
     pub fn load_from_fen(&mut self, fen: &str) {
         // Reset board
         self.states.clear();
@@ -485,7 +502,7 @@ impl Board {
 
                         // Add piece
                         'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
-                            let piece_type = BoardHelper::char_to_piece(ch).unwrap();
+                            let piece_type = Self::char_to_piece(ch).unwrap();
 
                             let bitboard = state.bitboard_mut(piece_type);
                             bitboard.mask.0 |= 1 << (current_pos + i * 8);
