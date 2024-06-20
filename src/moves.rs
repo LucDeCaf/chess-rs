@@ -35,4 +35,6 @@ impl Move {
 }
 
 #[derive(Debug, Clone)]
-pub struct MoveError;
+pub enum MoveError {
+    NoBoardState,
+}
