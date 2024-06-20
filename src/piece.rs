@@ -1,5 +1,6 @@
 use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
+use crate::move_gen;
 use crate::square::Square;
 
 pub const KNIGHT_MOVE_OFFSETS: [i8; 8] = [15, 17, 6, 10, -10, -6, -17, -15];
@@ -63,8 +64,8 @@ impl Direction {
             0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000;
 
         let mut blockers = match self {
-            Self::Orthogonal => BoardHelper::generate_rook_move_masks(),
-            Self::Diagonal => BoardHelper::generate_bishop_move_masks(),
+            Self::Orthogonal => move_gen::generate_rook_move_masks(),
+            Self::Diagonal => move_gen::generate_bishop_move_masks(),
         };
 
         for (i, blocker) in blockers.iter_mut().enumerate() {

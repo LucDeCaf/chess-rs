@@ -5,3 +5,4 @@ pub mod move_gen;
 pub mod moves;
 pub mod piece;
 pub mod square;
+pub mod move_masks;

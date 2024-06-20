@@ -1,6 +1,10 @@
 use crate::board_helper::BoardHelper;
 use crate::mask::Mask;
 use crate::move_gen::MoveGen;
+use crate::move_masks::{
+    BLACK_PAWN_CAPTURE_MASKS, BLACK_PAWN_MOVE_MASKS, KING_MOVE_MASKS, KNIGHT_MOVE_MASKS,
+    WHITE_PAWN_CAPTURE_MASKS, WHITE_PAWN_MOVE_MASKS,
+};
 use crate::moves::{Move, MoveError};
 use crate::piece::{Color, Piece};
 use crate::square::{Rank, Square};
@@ -33,8 +37,11 @@ struct BoardState {
     black_queens: Bitboard,
     black_kings: Bitboard,
 
-    // Used to check if en passant is possible
-    prev_move: Option<Move>,
+    // Special moves
+    prev_move: Option<Move>,                   // En passant
+    can_castle_short: bool,                    // Castling kingside
+    can_castle_long: bool,                     // Castling queenside
+    moves_since_last_capture_or_pawn_move: u8, // 50 move rule
 }
 
 #[allow(unused)]
@@ -91,7 +98,11 @@ impl BoardState {
                 mask: Mask(0),
                 piece: Piece::King(Color::Black),
             },
+
             prev_move: None,
+            can_castle_short: true,
+            can_castle_long: true,
+            moves_since_last_capture_or_pawn_move: 0,
         }
     }
 
@@ -273,20 +284,144 @@ impl BoardState {
             Color::Black => self.white_pieces_mask(),
         }
     }
+
+    pub fn possible_en_passant(&self) -> bool {
+        let current_turn = self.current_turn;
+        let Some(last_move) = self.prev_move else {
+            return false;
+        };
+
+        let rank_diff = last_move.rank_diff();
+        let file_diff = last_move.file_diff();
+        if rank_diff != 2 || file_diff != 0 {
+            return false;
+        }
+
+        return current_turn == Color::White && last_move.to.rank() == Rank::Five
+            || current_turn == Color::Black && last_move.to.rank() == Rank::Four;
+    }
+
+    pub fn en_passant_mask(&self) -> Option<Mask> {
+        let current_turn = self.current_turn;
+        let last_move = self.prev_move?;
+
+        let to_rank = last_move.to.rank();
+        let from_rank = last_move.from.rank();
+
+        if !self.possible_en_passant() {
+            return None;
+        }
+
+        let capture_rank = match current_turn {
+            Color::White => to_rank.plus(1)?,
+            Color::Black => to_rank.minus(1)?,
+        };
+        let capture_file = last_move.to.file();
+
+        Some(Square::from_coords(capture_rank, capture_file).mask())
+    }
+
+    pub fn is_move_legal(&self, mv: Move, sliding_move_generator: &MoveGen) -> bool {
+        // Prevent piece from moving to itself
+        if mv.from == mv.to {
+            return false;
+        }
+
+        let Some((legal_moves, _)) =
+            self.get_pseudolegal_move_mask(mv.from, sliding_move_generator)
+        else {
+            return false;
+        };
+
+        (legal_moves.0 & 1 << mv.to as usize) > 0
+    }
+
+    fn move_masks(&self, piece: Piece) -> Option<Vec<Mask>> {
+        match piece {
+            Piece::Pawn(color) => match color {
+                Color::White => Some(Vec::from_iter(WHITE_PAWN_MOVE_MASKS)),
+                Color::Black => Some(Vec::from_iter(BLACK_PAWN_MOVE_MASKS)),
+            },
+            Piece::Knight(_) => Some(Vec::from_iter(KNIGHT_MOVE_MASKS)),
+            Piece::King(_) => Some(Vec::from_iter(KING_MOVE_MASKS)),
+            _ => None,
+        }
+    }
+
+    pub fn get_pseudolegal_move_mask(
+        &self,
+        square: Square,
+        sliding_move_generator: &MoveGen,
+    ) -> Option<(Mask, Piece)> {
+        let blockers = self.all_pieces_mask();
+        let tile_mask = square.mask();
+
+        let piece = self.piece_at_square(square)?;
+        let color = piece.color();
+
+        // Prevent moving pieces of the wrong colour
+        if color != self.current_turn {
+            return None;
+        }
+
+        let bitboard = self.bitboard(piece);
+
+        let mut move_mask: Mask;
+
+        if bitboard.piece.is_slider() {
+            move_mask = Mask(0);
+
+            match bitboard.piece {
+                Piece::Rook(_) | Piece::Queen(_) => {
+                    move_mask |= sliding_move_generator.get_rook_moves(square, blockers);
+                }
+                Piece::Bishop(_) | Piece::Queen(_) => {
+                    move_mask |= sliding_move_generator.get_bishop_moves(square, blockers);
+                }
+                _ => (),
+            }
+        } else {
+            // Grab move mask for the piece at the current square
+            move_mask = self.move_masks(piece)?[square.to_shift()];
+
+            if let Piece::Pawn(_) = piece {
+                // Handle pawn captures and en passant
+                let capture_mask = match color {
+                    Color::White => WHITE_PAWN_CAPTURE_MASKS[square.to_shift()],
+                    Color::Black => BLACK_PAWN_CAPTURE_MASKS[square.to_shift()],
+                };
+
+                move_mask |= capture_mask & blockers;
+
+                if let Some(en_passant_mask) = self.en_passant_mask() {
+                    // If en passant mask can be found in capture mask
+                    if capture_mask & en_passant_mask != Mask(0) {
+                        move_mask |= en_passant_mask;
+                    }
+                }
+            }
+        }
+
+        // Filter out moves that capture one's own pieces
+        move_mask &= !self.friendly_pieces_mask(color);
+
+        Some((move_mask, piece))
+    }
+
+    pub fn get_pseudolegal_moves(
+        &self,
+        square: Square,
+        sliding_move_generator: &MoveGen,
+    ) -> Option<(Vec<Move>, Piece)> {
+        let (move_mask, piece) = self.get_pseudolegal_move_mask(square, sliding_move_generator)?;
+        Some((Move::from_move_mask(square, move_mask), piece))
+    }
 }
 
 #[derive(Debug)]
 pub struct Board {
     // Board state and state history
     states: Vec<BoardState>,
-
-    // Piece move tables (to be optimised)
-    white_pawn_move_masks: [Mask; 64],
-    black_pawn_move_masks: [Mask; 64],
-    white_pawn_capture_masks: [Mask; 64],
-    black_pawn_capture_masks: [Mask; 64],
-    knight_move_masks: [Mask; 64],
-    king_move_masks: [Mask; 64],
 
     // Sliding piece magic bitboard helper struct
     sliding_move_generator: MoveGen,
@@ -296,24 +431,8 @@ pub struct Board {
 impl Board {
     pub fn new() -> Self {
         // Use rook and bishop masks to generate queen masks
-        let bishop_move_masks = BoardHelper::generate_bishop_move_masks();
-        let rook_move_masks = BoardHelper::generate_rook_move_masks();
-
-        let mut i = 0;
-        let queen_move_masks = bishop_move_masks.clone().map(|bishop_mask| {
-            let queen_mask = Mask(bishop_mask.0.clone() | rook_move_masks[i].0.clone());
-            i += 1;
-            queen_mask
-        });
-
         let board = Board {
             states: Vec::new(),
-            white_pawn_move_masks: BoardHelper::generate_white_pawn_move_masks(),
-            black_pawn_move_masks: BoardHelper::generate_black_pawn_move_masks(),
-            white_pawn_capture_masks: BoardHelper::generate_white_pawn_capture_masks(),
-            black_pawn_capture_masks: BoardHelper::generate_black_pawn_capture_masks(),
-            knight_move_masks: BoardHelper::generate_knight_move_masks(),
-            king_move_masks: BoardHelper::generate_king_move_masks(),
             sliding_move_generator: MoveGen::init(),
         };
 
@@ -331,18 +450,6 @@ impl Board {
         match self.states.last_mut() {
             Some(state) => Ok(state),
             None => Err(MoveError::NoBoardState),
-        }
-    }
-
-    fn move_masks(&self, piece: Piece) -> Option<Vec<Mask>> {
-        match piece {
-            Piece::Pawn(color) => match color {
-                Color::White => Some(Vec::from_iter(self.white_pawn_move_masks)),
-                Color::Black => Some(Vec::from_iter(self.black_pawn_move_masks)),
-            },
-            Piece::Knight(_) => Some(Vec::from_iter(self.knight_move_masks)),
-            Piece::King(_) => Some(Vec::from_iter(self.king_move_masks)),
-            _ => None,
         }
     }
 
@@ -430,128 +537,12 @@ impl Board {
         self.states.pop();
     }
 
-    pub fn possible_en_passant(&self) -> bool {
-        let Ok(state) = self.current_state() else {
-            return false;
-        };
-
-        let current_turn = state.current_turn;
-        let Some(last_move) = state.prev_move else {
-            return false;
-        };
-
-        let rank_diff = last_move.rank_diff();
-        let file_diff = last_move.file_diff();
-        if rank_diff != 2 || file_diff != 0 {
-            return false;
-        }
-
-        return current_turn == Color::White && last_move.to.rank() == Rank::Five
-            || current_turn == Color::Black && last_move.to.rank() == Rank::Four;
-    }
-
-    pub fn en_passant_mask(&self) -> Option<Mask> {
-        let Ok(state) = self.current_state() else {
-            return None;
-        };
-
-        let current_turn = state.current_turn;
-        let last_move = state.prev_move?;
-
-        let to_rank = last_move.to.rank();
-        let from_rank = last_move.from.rank();
-
-        if !self.possible_en_passant() {
-            return None;
-        }
-
-        let capture_rank = match current_turn {
-            Color::White => to_rank.plus(1)?,
-            Color::Black => to_rank.minus(1)?,
-        };
-        let capture_file = last_move.to.file();
-
-        Some(Square::from_coords(capture_rank, capture_file).mask())
-    }
-
     pub fn is_move_legal(&self, mv: Move) -> bool {
-        // Prevent piece from moving to itself
-        if mv.from == mv.to {
-            return false;
-        }
-
-        let Some((legal_moves, _)) = self.get_pseudolegal_move_mask(mv.from) else {
-            return false;
-        };
-
-        (legal_moves.0 & 1 << mv.to as usize) > 0
-    }
-
-    pub fn get_pseudolegal_move_mask(&self, square: Square) -> Option<(Mask, Piece)> {
         let Ok(state) = self.current_state() else {
-            return None;
+            return false;
         };
 
-        let blockers = state.all_pieces_mask();
-        let tile_mask = square.mask();
-
-        let piece = state.piece_at_square(square)?;
-        let color = piece.color();
-
-        // Prevent moving pieces of the wrong colour
-        if color != state.current_turn {
-            return None;
-        }
-
-        let bitboard = state.bitboard(piece);
-
-        let mut move_mask: Mask;
-
-        if bitboard.piece.is_slider() {
-            move_mask = Mask(0);
-
-            match bitboard.piece {
-                Piece::Rook(_) | Piece::Queen(_) => {
-                    move_mask |= self.sliding_move_generator.get_rook_moves(square, blockers);
-                }
-                Piece::Bishop(_) | Piece::Queen(_) => {
-                    move_mask |= self
-                        .sliding_move_generator
-                        .get_bishop_moves(square, blockers);
-                }
-                _ => (),
-            }
-        } else {
-            // Grab move mask for the piece at the current square
-            move_mask = self.move_masks(piece)?[square.to_shift()];
-
-            if let Piece::Pawn(_) = piece {
-                // Handle pawn captures and en passant
-                let capture_mask = match color {
-                    Color::White => self.white_pawn_capture_masks[square.to_shift()],
-                    Color::Black => self.black_pawn_capture_masks[square.to_shift()],
-                };
-
-                move_mask |= capture_mask & blockers;
-
-                if let Some(en_passant_mask) = self.en_passant_mask() {
-                    // If en passant mask can be found in capture mask
-                    if capture_mask & en_passant_mask != Mask(0) {
-                        move_mask |= en_passant_mask;
-                    }
-                }
-            }
-        }
-
-        // Filter out moves that capture one's own pieces
-        move_mask &= !state.friendly_pieces_mask(color);
-
-        Some((move_mask, piece))
-    }
-
-    pub fn get_pseudolegal_moves(&self, square: Square) -> Option<(Vec<Move>, Piece)> {
-        let (move_mask, piece) = self.get_pseudolegal_move_mask(square)?;
-        Some((Move::from_move_mask(square, move_mask), piece))
+        state.is_move_legal(mv, &self.sliding_move_generator)
     }
 }
 
@@ -590,20 +581,26 @@ mod board_tests {
             to: Square::E4,
         });
 
-        assert_eq!(board.en_passant_mask(), Some(Square::E3.mask()));
+        assert_eq!(
+            board.current_state().unwrap().en_passant_mask(),
+            Some(Square::E3.mask())
+        );
 
         let _ = board.make_move(Move {
             from: Square::E7,
             to: Square::E5,
         });
 
-        assert_eq!(board.en_passant_mask(), Some(Square::E6.mask()));
+        assert_eq!(
+            board.current_state().unwrap().en_passant_mask(),
+            Some(Square::E6.mask())
+        );
 
         let _ = board.make_move(Move {
             from: Square::G1,
             to: Square::F3,
         });
 
-        assert_eq!(board.en_passant_mask(), None);
+        assert_eq!(board.current_state().unwrap().en_passant_mask(), None);
     }
 }
