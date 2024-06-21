@@ -25,12 +25,12 @@ pub enum FenError {
     TooManySections,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpecialMove {
     CastleKingside,
     CastleQueenside,
     EnPassant,
-    Promotion(Piece),
+    Promotion,
 }
 
 /// Stores all the necessary data to recreate a position on a Board
@@ -530,39 +530,100 @@ impl Board {
             return Err(MoveError::MissingPiece);
         };
 
-        // Check if is en passant
-        let is_en_passant = match from_piece {
-            // Check if moved piece is a pawn
-            Piece::Pawn(_) => {
-                if let Some(mask) = new_state.en_passant_mask() {
-                    // Check if en passant mask equals move mask
-                    mask == mv.to.mask()
-                } else {
-                    false
+        let special_move: Option<SpecialMove> = 'special_move: {
+            match from_piece {
+                Piece::Pawn(_) => {
+                    // Check for promotion
+                    if mv.to.rank() == Rank::One || mv.to.rank() == Rank::Eight {
+                        break 'special_move Some(SpecialMove::Promotion);
+                    }
+
+                    // Check for en passant
+                    if let Some(mask) = new_state.en_passant_mask() {
+                        // Check if en passant mask equals move mask
+                        if mask == mv.to.mask() {
+                            break 'special_move Some(SpecialMove::EnPassant);
+                        }
+                    }
                 }
-            }
-            _ => false,
+                Piece::King(_) => {
+                    // Check for castling by checking if king moved 2 squares horizontally
+                    if mv.file_diff() == 2 {
+                        break 'special_move ({
+                            // Check if king moved to the right or not
+                            let is_kingside = mv.to.file() > mv.from.file();
+
+                            if is_kingside {
+                                Some(SpecialMove::CastleKingside)
+                            } else {
+                                Some(SpecialMove::CastleQueenside)
+                            }
+                        });
+                    }
+                }
+                _ => (),
+            };
+
+            None
         };
 
         // Update board state
         let mut is_capture = false;
 
-        if is_en_passant {
-            let rank = mv.to.rank();
-            let file = mv.to.file();
+        if let Some(special_move) = special_move {
+            match special_move {
+                SpecialMove::EnPassant => {
+                    let rank = mv.to.rank();
+                    let file = mv.to.file();
 
-            let offset_rank = match active_color {
-                Color::White => rank.minus(1),
-                Color::Black => rank.plus(1),
+                    let offset_rank = match active_color {
+                        Color::White => rank.minus(1),
+                        Color::Black => rank.plus(1),
+                    }
+                    .unwrap();
+
+                    // Capture the pawn when en passant is played
+                    let enemy_pawns = match active_color {
+                        Color::White => &mut new_state.masks[Piece::BLACK_PAWN_INDEX],
+                        Color::Black => &mut new_state.masks[Piece::WHITE_PAWN_INDEX],
+                    };
+                    *enemy_pawns &= !(Square::from_coords(offset_rank, file)).mask();
+                }
+                SpecialMove::CastleKingside => {
+                    let rook_mask = new_state.mask_mut(Piece::Rook(active_color));
+                    let start_square = match active_color {
+                        Color::White => Square::H1,
+                        Color::Black => Square::H8,
+                    };
+                    let end_square = match active_color {
+                        Color::White => Square::F1,
+                        Color::Black => Square::F8,
+                    };
+                    *rook_mask &= !start_square.mask();
+                    *rook_mask |= end_square.mask();
+                }
+                SpecialMove::CastleQueenside => {
+                    let rook_mask = new_state.mask_mut(Piece::Rook(active_color));
+                    let start_square = match active_color {
+                        Color::White => Square::A1,
+                        Color::Black => Square::A8,
+                    };
+                    let end_square = match active_color {
+                        Color::White => Square::D1,
+                        Color::Black => Square::D8,
+                    };
+                    *rook_mask &= !start_square.mask();
+                    *rook_mask |= end_square.mask();
+                }
+                SpecialMove::Promotion => {
+                    // Only allow promotion to a queen for now
+                    let promoted_piece_mask = new_state.mask_mut(Piece::Queen(active_color));
+                    *promoted_piece_mask |= mv.to.mask();
+
+                    let pawn_mask = new_state.mask_mut(from_piece);
+                    *pawn_mask &= !mv.from.mask();
+                }
             }
-            .unwrap();
-
-            // Capture the pawn when en passant is played
-            let enemy_pawns = match active_color {
-                Color::White => &mut new_state.masks[Piece::BLACK_PAWN_INDEX],
-                Color::Black => &mut new_state.masks[Piece::WHITE_PAWN_INDEX],
-            };
-            *enemy_pawns &= !(Square::from_coords(offset_rank, file)).mask();
         } else if let Some(to_piece) = new_state.piece_at_square(mv.to) {
             is_capture = true;
 
@@ -571,8 +632,12 @@ impl Board {
             mask.0 &= !(1 << mv.to as usize);
         }
 
-        let from_mask = new_state.mask_mut(from_piece);
-        from_mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
+        // Move piece
+        // Movement is handled separately for promoting pawns
+        if special_move != Some(SpecialMove::Promotion) {
+            let from_mask = new_state.mask_mut(from_piece);
+            from_mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
+        }
 
         // Update move counts
         if new_state.active_color == Color::Black {
@@ -623,8 +688,21 @@ mod board_tests {
         board.current_state().unwrap().all_pieces_mask().print();
     }
 
+    // #[test]
+    // fn en_passant() {
+    //     let mut board = Board::new();
+    //     board.load_from_fen(START_FEN);
+
+    //     let _ = board.make_move(Move {
+    //         from: Square::G1,
+    //         to: Square::F3,
+    //     });
+
+    //     let _ = board.make_move(Move {});
+    // }
+
     #[test]
-    fn en_passant_legal_move() {
+    fn en_passant_is_legal() {
         let mut board = Board::new();
         board.load_from_fen(START_FEN);
 
