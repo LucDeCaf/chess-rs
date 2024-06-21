@@ -26,6 +26,19 @@ pub enum Piece {
 }
 
 impl Piece {
+    pub const WHITE_PAWN_INDEX: usize = 0;
+    pub const WHITE_KNIGHT_INDEX: usize = 1;
+    pub const WHITE_BISHOP_INDEX: usize = 2;
+    pub const WHITE_ROOK_INDEX: usize = 3;
+    pub const WHITE_QUEEN_INDEX: usize = 4;
+    pub const WHITE_KING_INDEX: usize = 5;
+    pub const BLACK_PAWN_INDEX: usize = 6;
+    pub const BLACK_KNIGHT_INDEX: usize = 7;
+    pub const BLACK_BISHOP_INDEX: usize = 8;
+    pub const BLACK_ROOK_INDEX: usize = 9;
+    pub const BLACK_QUEEN_INDEX: usize = 10;
+    pub const BLACK_KING_INDEX: usize = 11;
+
     pub fn color(&self) -> Color {
         match self {
             Self::Pawn(color)
@@ -41,6 +54,24 @@ impl Piece {
         match self {
             Piece::Queen(_) | Piece::Rook(_) | Piece::Bishop(_) => true,
             Piece::King(_) | Piece::Knight(_) | Piece::Pawn(_) => false,
+        }
+    }
+
+    pub fn from_char(ch: char) -> Option<Self> {
+        match ch {
+            'P' => Some(Self::Pawn(Color::White)),
+            'N' => Some(Self::Knight(Color::White)),
+            'B' => Some(Self::Bishop(Color::White)),
+            'R' => Some(Self::Rook(Color::White)),
+            'Q' => Some(Self::Queen(Color::White)),
+            'K' => Some(Self::King(Color::White)),
+            'p' => Some(Self::Pawn(Color::Black)),
+            'n' => Some(Self::Knight(Color::Black)),
+            'b' => Some(Self::Bishop(Color::Black)),
+            'r' => Some(Self::Rook(Color::Black)),
+            'q' => Some(Self::Queen(Color::Black)),
+            'k' => Some(Self::King(Color::Black)),
+            _ => None,
         }
     }
 }
