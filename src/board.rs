@@ -13,10 +13,21 @@ use crate::square::{Rank, Square};
 // Starting position
 pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+pub enum FenError {
+    BadPosition,
+    BadActiveColor,
+    BadCastlingRights,
+    BadEnPassant,
+    BadHalfmoves,
+    BadFullmoves,
+    MissingSection,
+    TooManySections,
+}
+
 /// Stores all the necessary data to recreate a position on a Board
 #[derive(Debug, Clone)]
 struct BoardState {
-    current_turn: Color,
+    active_color: Color,
 
     masks: [Mask; 12],
 
@@ -34,7 +45,7 @@ struct BoardState {
 impl BoardState {
     fn new() -> Self {
         Self {
-            current_turn: Color::White,
+            active_color: Color::White,
 
             masks: [Mask(0); 12],
 
@@ -122,8 +133,8 @@ impl BoardState {
         &self.masks[Self::piece_to_index(piece)]
     }
 
-    fn swap_current_turn(&mut self) {
-        self.current_turn = match self.current_turn {
+    fn swap_active_color(&mut self) {
+        self.active_color = match self.active_color {
             Color::White => Color::Black,
             Color::Black => Color::White,
         };
@@ -170,7 +181,7 @@ impl BoardState {
     }
 
     pub fn possible_en_passant(&self) -> bool {
-        let current_turn = self.current_turn;
+        let active_color = self.active_color;
         let Some(last_move) = self.prev_move else {
             return false;
         };
@@ -190,12 +201,12 @@ impl BoardState {
             return false;
         }
 
-        return current_turn == Color::White && last_move.to.rank() == Rank::Five
-            || current_turn == Color::Black && last_move.to.rank() == Rank::Four;
+        return active_color == Color::White && last_move.to.rank() == Rank::Five
+            || active_color == Color::Black && last_move.to.rank() == Rank::Four;
     }
 
     pub fn en_passant_mask(&self) -> Option<Mask> {
-        let current_turn = self.current_turn;
+        let active_color = self.active_color;
         let last_move = self.prev_move?;
 
         let to_rank = last_move.to.rank();
@@ -205,7 +216,7 @@ impl BoardState {
             return None;
         }
 
-        let capture_rank = match current_turn {
+        let capture_rank = match active_color {
             Color::White => to_rank.plus(1)?,
             Color::Black => to_rank.minus(1)?,
         };
@@ -253,7 +264,7 @@ impl BoardState {
         let color = piece.color();
 
         // Prevent moving pieces of the wrong colour
-        if color != self.current_turn {
+        if color != self.active_color {
             return None;
         }
 
@@ -346,24 +357,20 @@ impl Board {
         }
     }
 
-    ///```
-    /// const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    /// ```
-    pub fn load_from_fen(&mut self, fen: &str) {
+    pub fn load_from_fen(&mut self, fen: &str) -> Result<(), FenError> {
         // Reset board
         self.states.clear();
 
         let mut state = BoardState::new();
 
         // Get segments of FEN string
-        let mut segments = fen.split(' ');
+        let mut segments = fen.trim().split(' ');
 
         'pieces: {
-            let rows = segments
-                .next()
-                .expect("FEN string should have 6 segments")
-                .split('/')
-                .rev();
+            let Some(piece_string) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+            let rows = piece_string.split('/').rev();
 
             for (i, row) in rows.enumerate() {
                 let mut chars = row.chars();
@@ -374,6 +381,7 @@ impl Board {
                         match ch {
                             // Skip squares
                             '1'..='8' => {
+                                // * Guaranteed to never panic due to above range check
                                 let digit = ch.to_digit(9).unwrap();
                                 current_pos += digit as usize;
                             }
@@ -381,6 +389,7 @@ impl Board {
                             // Add piece
                             'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q'
                             | 'k' => {
+                                // * Guaranteed to never panic due to above range check
                                 let piece_type = Piece::from_char(ch).unwrap();
 
                                 let mask = state.mask_mut(piece_type);
@@ -398,16 +407,25 @@ impl Board {
             }
         }
 
-        'current_turn: {
-            state.current_turn = match segments.next().expect("FEN string should have 6 segments") {
+        'active_color: {
+            let Some(active_color) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+            state.active_color = match active_color {
                 "w" => Color::White,
                 "b" => Color::Black,
-                _ => panic!("Second segment of FEN string should be either 'w' or 'b'."),
+                _ => return Err(FenError::BadActiveColor),
             };
         }
 
         'castling_rights: {
-            let castling_rights = segments.next().expect("FEN string should have 6 segments");
+            let Some(castling_rights) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+
+            if castling_rights == "-" {
+                break 'castling_rights;
+            }
 
             state.white_can_castle_short = false;
             state.white_can_castle_long = false;
@@ -453,20 +471,24 @@ impl Board {
         'en_passant: {
             state.prev_move = None;
 
-            let next_segment = segments.next().expect("FEN string should have 6 segments");
-
-            let Some(square) = Square::from_str(next_segment) else {
-                break 'en_passant;
+            let Some(next_segment) = segments.next() else {
+                return Err(FenError::BadEnPassant);
             };
 
-            let above_rank = square
-                .rank()
-                .plus(1)
-                .expect("En passant square should be on rank 3 or rank 6");
-            let below_rank = square
-                .rank()
-                .minus(1)
-                .expect("En passant square should be on rank 3 or rank 6");
+            if next_segment == "-" {
+                break 'en_passant;
+            }
+
+            let Some(square) = Square::from_str(next_segment) else {
+                return Err(FenError::BadEnPassant);
+            };
+
+            let Some(above_rank) = square.rank().plus(1) else {
+                return Err(FenError::BadEnPassant);
+            };
+            let Some(below_rank) = square.rank().minus(1) else {
+                return Err(FenError::BadEnPassant);
+            };
             let file = square.file();
 
             let mut mv = match above_rank {
@@ -478,44 +500,53 @@ impl Board {
                     from: Square::from_coords(above_rank, file),
                     to: Square::from_coords(below_rank, file),
                 },
-                _ => panic!("En passant square should be on rank 3 or rank 6"),
+                _ => return Err(FenError::BadEnPassant),
             };
 
             state.prev_move = Some(mv);
         }
 
         'halfmoves: {
-            let halfmoves = segments.next().expect("FEN string should have 6 segments");
-            let halfmoves = halfmoves
-                .to_owned()
-                .parse::<u8>()
-                .expect("Halfmove counter should be a number from 0 to 100");
+            let Some(halfmoves) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+            let Ok(halfmoves) = halfmoves.to_owned().parse::<u8>() else {
+                return Err(FenError::BadHalfmoves);
+            };
 
             if halfmoves > 100 {
-                panic!("Halfmove counter should be a number from 0 to 100");
+                return Err(FenError::BadHalfmoves);
             }
 
             state.halfmoves = halfmoves;
         }
 
         'fullmoves: {
-            let fullmoves = segments.next().expect("FEN string should have 6 segments");
-            let fullmoves = fullmoves
-                .to_owned()
-                .parse::<u32>()
-                .expect("Halfmove counter should be a number from 0 to 100");
+            let Some(fullmoves) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+            let Ok(fullmoves) = fullmoves.to_owned().parse::<u32>() else {
+                return Err(FenError::BadFullmoves);
+            };
 
             state.fullmoves = fullmoves;
         }
 
+        if let Some(_extra_section) = segments.next() {
+            return Err(FenError::TooManySections);
+        }
+
+        self.states.clear();
         self.states.push(state);
+
+        Ok(())
     }
 
     /// Makes a move on the board, regardless of whether the move is legal or not.
     pub fn make_move(&mut self, mv: Move) -> Result<(), MoveError> {
         // Store copy of old board state
         let mut new_state = self.current_state()?.clone();
-        let current_turn = new_state.current_turn;
+        let active_color = new_state.active_color;
 
         let Some(from_piece) = new_state.piece_at_square(mv.from) else {
             return Err(MoveError::MissingPiece);
@@ -542,14 +573,14 @@ impl Board {
             let rank = mv.to.rank();
             let file = mv.to.file();
 
-            let offset_rank = match current_turn {
+            let offset_rank = match active_color {
                 Color::White => rank.minus(1),
                 Color::Black => rank.plus(1),
             }
             .unwrap();
 
             // Capture the pawn when en passant is played
-            let enemy_pawns = match current_turn {
+            let enemy_pawns = match active_color {
                 Color::White => &mut new_state.masks[Piece::BLACK_PAWN_INDEX],
                 Color::Black => &mut new_state.masks[Piece::WHITE_PAWN_INDEX],
             };
@@ -566,7 +597,7 @@ impl Board {
         from_mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
 
         // Update move counts
-        if new_state.current_turn == Color::Black {
+        if new_state.active_color == Color::Black {
             new_state.fullmoves += 1;
         }
         new_state.halfmoves = match from_piece {
@@ -581,7 +612,7 @@ impl Board {
         };
 
         new_state.prev_move = Some(mv);
-        new_state.swap_current_turn();
+        new_state.swap_active_color();
 
         // Add new state to state history
         self.states.push(new_state);
