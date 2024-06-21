@@ -68,6 +68,185 @@ impl BoardState {
         }
     }
 
+    pub fn from_fen(fen: &str) -> Result<Self, FenError> {
+        let mut state = Self::new();
+
+        // Get segments of FEN string
+        let mut segments = fen.trim().split(' ');
+
+        'pieces: {
+            let Some(piece_string) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+            let rows = piece_string.split('/').rev();
+
+            for (i, row) in rows.enumerate() {
+                let mut chars = row.chars();
+                let mut current_pos = 0;
+
+                while current_pos < 8 {
+                    if let Some(ch) = chars.next() {
+                        match ch {
+                            // Skip squares
+                            '1'..='8' => {
+                                // * Guaranteed to never panic due to above range check
+                                let digit = ch.to_digit(9).unwrap();
+                                current_pos += digit as usize;
+                            }
+
+                            // Add piece
+                            'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q'
+                            | 'k' => {
+                                // * Guaranteed to never panic due to above range check
+                                let piece_type = Piece::from_char(ch).unwrap();
+
+                                let mask = state.mask_mut(piece_type);
+                                mask.0 |= 1 << (current_pos + i * 8);
+                                current_pos += 1;
+                            }
+
+                            // Ignore invalid input (for now)
+                            _ => (),
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        'active_color: {
+            let Some(active_color) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+            state.active_color = match active_color {
+                "w" => Color::White,
+                "b" => Color::Black,
+                _ => return Err(FenError::BadActiveColor),
+            };
+        }
+
+        'castling_rights: {
+            let Some(castling_rights) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+
+            if castling_rights == "-" {
+                break 'castling_rights;
+            }
+
+            state.white_can_castle_short = false;
+            state.white_can_castle_long = false;
+            state.black_can_castle_short = false;
+            state.black_can_castle_long = false;
+
+            let mut prev: u8 = 0;
+
+            for ch in castling_rights.chars() {
+                match ch {
+                'K' => {
+                    if prev > 0 {
+                        panic!("Castling rights in FEN string ordered incorrectly");
+                    }
+                    prev = 1;
+                    state.white_can_castle_short = true;
+                }
+                'Q' => {
+                    if prev > 1 {
+                        panic!("Castling rights in FEN string ordered incorrectly");
+                    }
+                    prev = 2;
+                    state.white_can_castle_short = true;
+                }
+                'k' => {
+                    if prev > 2 {
+                        panic!("Castling rights in FEN string ordered incorrectly");
+                    }
+                    prev = 3;
+                    state.white_can_castle_short = true;
+                }
+                'q' => {
+                    if prev > 3 {
+                        panic!("Castling rights in FEN string ordered incorrectly");
+                    }
+                    state.white_can_castle_short = true;
+                }
+                _ => panic!("Third segment of FEN string should only contain the characters 'K', 'Q', 'k', 'q'"),
+            }
+            }
+        }
+
+        'en_passant: {
+            state.prev_move = None;
+
+            let Some(next_segment) = segments.next() else {
+                return Err(FenError::BadEnPassant);
+            };
+
+            if next_segment == "-" {
+                break 'en_passant;
+            }
+
+            let Some(square) = Square::from_str(next_segment) else {
+                return Err(FenError::BadEnPassant);
+            };
+
+            let Some(above_rank) = square.rank().plus(1) else {
+                return Err(FenError::BadEnPassant);
+            };
+            let Some(below_rank) = square.rank().minus(1) else {
+                return Err(FenError::BadEnPassant);
+            };
+            let file = square.file();
+
+            let mut mv = match above_rank {
+                Rank::Four => Move {
+                    from: Square::from_coords(below_rank, file),
+                    to: Square::from_coords(above_rank, file),
+                },
+                Rank::Seven => Move {
+                    from: Square::from_coords(above_rank, file),
+                    to: Square::from_coords(below_rank, file),
+                },
+                _ => return Err(FenError::BadEnPassant),
+            };
+
+            state.prev_move = Some(mv);
+        }
+
+        'halfmoves: {
+            let Some(halfmoves) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+            let Ok(halfmoves) = halfmoves.to_owned().parse::<u8>() else {
+                return Err(FenError::BadHalfmoves);
+            };
+
+            if halfmoves > 100 {
+                return Err(FenError::BadHalfmoves);
+            }
+
+            state.halfmoves = halfmoves;
+        }
+
+        'fullmoves: {
+            let Some(fullmoves) = segments.next() else {
+                return Err(FenError::MissingSection);
+            };
+            let Ok(fullmoves) = fullmoves.to_owned().parse::<u32>() else {
+                return Err(FenError::BadFullmoves);
+            };
+
+            state.fullmoves = fullmoves;
+        }
+
+        if let Some(_extra_section) = segments.next() {
+            return Err(FenError::TooManySections);
+        }
+
+        Ok(state)
+    }
+
     fn white_pieces(&self) -> &[Mask] {
         &self.masks[0..6]
     }
@@ -333,183 +512,7 @@ impl Board {
     }
 
     pub fn load_from_fen(&mut self, fen: &str) -> Result<(), FenError> {
-        // Reset board
-        self.states.clear();
-
-        let mut state = BoardState::new();
-
-        // Get segments of FEN string
-        let mut segments = fen.trim().split(' ');
-
-        'pieces: {
-            let Some(piece_string) = segments.next() else {
-                return Err(FenError::MissingSection);
-            };
-            let rows = piece_string.split('/').rev();
-
-            for (i, row) in rows.enumerate() {
-                let mut chars = row.chars();
-                let mut current_pos = 0;
-
-                while current_pos < 8 {
-                    if let Some(ch) = chars.next() {
-                        match ch {
-                            // Skip squares
-                            '1'..='8' => {
-                                // * Guaranteed to never panic due to above range check
-                                let digit = ch.to_digit(9).unwrap();
-                                current_pos += digit as usize;
-                            }
-
-                            // Add piece
-                            'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q'
-                            | 'k' => {
-                                // * Guaranteed to never panic due to above range check
-                                let piece_type = Piece::from_char(ch).unwrap();
-
-                                let mask = state.mask_mut(piece_type);
-                                mask.0 |= 1 << (current_pos + i * 8);
-                                current_pos += 1;
-                            }
-
-                            // Ignore invalid input (for now)
-                            _ => (),
-                        }
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-
-        'active_color: {
-            let Some(active_color) = segments.next() else {
-                return Err(FenError::MissingSection);
-            };
-            state.active_color = match active_color {
-                "w" => Color::White,
-                "b" => Color::Black,
-                _ => return Err(FenError::BadActiveColor),
-            };
-        }
-
-        'castling_rights: {
-            let Some(castling_rights) = segments.next() else {
-                return Err(FenError::MissingSection);
-            };
-
-            if castling_rights == "-" {
-                break 'castling_rights;
-            }
-
-            state.white_can_castle_short = false;
-            state.white_can_castle_long = false;
-            state.black_can_castle_short = false;
-            state.black_can_castle_long = false;
-
-            let mut prev: u8 = 0;
-
-            for ch in castling_rights.chars() {
-                match ch {
-                'K' => {
-                    if prev > 0 {
-                        panic!("Castling rights in FEN string ordered incorrectly");
-                    }
-                    prev = 1;
-                    state.white_can_castle_short = true;
-                }
-                'Q' => {
-                    if prev > 1 {
-                        panic!("Castling rights in FEN string ordered incorrectly");
-                    }
-                    prev = 2;
-                    state.white_can_castle_short = true;
-                }
-                'k' => {
-                    if prev > 2 {
-                        panic!("Castling rights in FEN string ordered incorrectly");
-                    }
-                    prev = 3;
-                    state.white_can_castle_short = true;
-                }
-                'q' => {
-                    if prev > 3 {
-                        panic!("Castling rights in FEN string ordered incorrectly");
-                    }
-                    state.white_can_castle_short = true;
-                }
-                _ => panic!("Third segment of FEN string should only contain the characters 'K', 'Q', 'k', 'q'"),
-            }
-            }
-        }
-
-        'en_passant: {
-            state.prev_move = None;
-
-            let Some(next_segment) = segments.next() else {
-                return Err(FenError::BadEnPassant);
-            };
-
-            if next_segment == "-" {
-                break 'en_passant;
-            }
-
-            let Some(square) = Square::from_str(next_segment) else {
-                return Err(FenError::BadEnPassant);
-            };
-
-            let Some(above_rank) = square.rank().plus(1) else {
-                return Err(FenError::BadEnPassant);
-            };
-            let Some(below_rank) = square.rank().minus(1) else {
-                return Err(FenError::BadEnPassant);
-            };
-            let file = square.file();
-
-            let mut mv = match above_rank {
-                Rank::Four => Move {
-                    from: Square::from_coords(below_rank, file),
-                    to: Square::from_coords(above_rank, file),
-                },
-                Rank::Seven => Move {
-                    from: Square::from_coords(above_rank, file),
-                    to: Square::from_coords(below_rank, file),
-                },
-                _ => return Err(FenError::BadEnPassant),
-            };
-
-            state.prev_move = Some(mv);
-        }
-
-        'halfmoves: {
-            let Some(halfmoves) = segments.next() else {
-                return Err(FenError::MissingSection);
-            };
-            let Ok(halfmoves) = halfmoves.to_owned().parse::<u8>() else {
-                return Err(FenError::BadHalfmoves);
-            };
-
-            if halfmoves > 100 {
-                return Err(FenError::BadHalfmoves);
-            }
-
-            state.halfmoves = halfmoves;
-        }
-
-        'fullmoves: {
-            let Some(fullmoves) = segments.next() else {
-                return Err(FenError::MissingSection);
-            };
-            let Ok(fullmoves) = fullmoves.to_owned().parse::<u32>() else {
-                return Err(FenError::BadFullmoves);
-            };
-
-            state.fullmoves = fullmoves;
-        }
-
-        if let Some(_extra_section) = segments.next() {
-            return Err(FenError::TooManySections);
-        }
+        let state = BoardState::from_fen(fen)?;
 
         self.states.clear();
         self.states.push(state);
