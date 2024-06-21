@@ -1,4 +1,4 @@
-mod direction {
+pub mod direction {
     use crate::{
         mask::Mask,
         move_gen::move_gen::{

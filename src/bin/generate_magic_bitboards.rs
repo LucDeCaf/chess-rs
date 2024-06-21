@@ -2,8 +2,7 @@ use std::fs;
 
 use chess::{
     mask::Mask,
-    move_gen::move_gen::{try_fill_magic_table, MagicEntry},
-    piece::Direction,
+    move_gen::move_gen::{direction::Direction, try_fill_magic_table, MagicEntry},
     square::Square,
 };
 
@@ -85,7 +84,7 @@ fn main() -> std::io::Result<()> {
 
 #[cfg(test)]
 pub mod magic_gen_tests {
-    use chess::piece::Direction;
+    use chess::move_gen::move_gen::direction::Direction;
 
     use super::*;
 
