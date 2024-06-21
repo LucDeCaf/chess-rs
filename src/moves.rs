@@ -38,4 +38,5 @@ impl Move {
 pub enum MoveError {
     NoBoardState,
     MissingPiece,
+    WrongColor,
 }

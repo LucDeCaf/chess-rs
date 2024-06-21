@@ -526,9 +526,16 @@ impl Board {
         let mut new_state = self.current_state()?.clone();
         let active_color = new_state.active_color;
 
+        dbg!(&active_color);
+        dbg!(&mv);
+
         let Some(from_piece) = new_state.piece_at_square(mv.from) else {
             return Err(MoveError::MissingPiece);
         };
+
+        if from_piece.color() != active_color {
+            return Err(MoveError::WrongColor);
+        }
 
         let special_move: Option<SpecialMove> = 'special_move: {
             match from_piece {
@@ -629,14 +636,21 @@ impl Board {
 
             // Remove captured piece
             let mask = new_state.mask_mut(to_piece);
-            mask.0 &= !(1 << mv.to as usize);
+            *mask &= !mv.to.mask();
         }
 
         // Move piece
         // Movement is handled separately for promoting pawns
-        if special_move != Some(SpecialMove::Promotion) {
+        if let Some(special_move) = special_move {
+            if special_move != SpecialMove::Promotion {
+                let from_mask = new_state.mask_mut(from_piece);
+                *from_mask &= !mv.from.mask();
+                *from_mask |= mv.to.mask();
+            }
+        } else {
             let from_mask = new_state.mask_mut(from_piece);
-            from_mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
+            *from_mask &= !mv.from.mask();
+            *from_mask |= mv.to.mask();
         }
 
         // Update move counts
@@ -688,18 +702,26 @@ mod board_tests {
         board.current_state().unwrap().all_pieces_mask().print();
     }
 
-    // #[test]
-    // fn en_passant() {
-    //     let mut board = Board::new();
-    //     board.load_from_fen(START_FEN);
+    #[test]
+    fn castling() {
+        let mut board = Board::new();
+        board.load_from_fen(START_FEN);
 
-    //     let _ = board.make_move(Move {
-    //         from: Square::G1,
-    //         to: Square::F3,
-    //     });
+        let _ = board.make_move(Move::from_long_algebraic("d2d4").unwrap());
+        let _ = board.make_move(Move::from_long_algebraic("g8f6").unwrap());
+        let _ = board.make_move(Move::from_long_algebraic("c1f4").unwrap());
+        let _ = board.make_move(Move::from_long_algebraic("e7e6").unwrap());
+        let _ = board.make_move(Move::from_long_algebraic("b1c3").unwrap());
+        let _ = board.make_move(Move::from_long_algebraic("f8e7").unwrap());
+        let _ = board.make_move(Move::from_long_algebraic("d1d2").unwrap());
+        let _ = board.make_move(Move::from_long_algebraic("e8g8").unwrap());
+        let _ = board.make_move(Move::from_long_algebraic("e1c1").unwrap());
 
-    //     let _ = board.make_move(Move {});
-    // }
+        assert_eq!(
+            board.states[0].all_pieces_mask(),
+            Mask(18446462598732906495),
+        );
+    }
 
     #[test]
     fn en_passant_is_legal() {
