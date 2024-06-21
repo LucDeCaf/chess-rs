@@ -13,6 +13,7 @@ use crate::square::{Rank, Square};
 // Starting position
 pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+#[derive(Debug)]
 pub enum FenError {
     BadPosition,
     BadActiveColor,
@@ -22,6 +23,14 @@ pub enum FenError {
     BadFullmoves,
     MissingSection,
     TooManySections,
+}
+
+#[derive(Debug)]
+pub enum SpecialMove {
+    CastleKingside,
+    CastleQueenside,
+    EnPassant,
+    Promotion(Piece),
 }
 
 /// Stores all the necessary data to recreate a position on a Board
@@ -81,44 +90,10 @@ impl BoardState {
         }
     }
 
-    fn piece_to_index(piece: Piece) -> usize {
-        let mut index = match piece.color() {
-            Color::White => 0,
-            Color::Black => 6,
-        };
-        index += match piece {
-            Piece::Pawn(_) => 0,
-            Piece::Knight(_) => 1,
-            Piece::Bishop(_) => 2,
-            Piece::Rook(_) => 3,
-            Piece::Queen(_) => 4,
-            Piece::King(_) => 5,
-        };
-        index
-    }
-
-    fn index_to_piece(i: usize) -> Option<Piece> {
-        match i {
-            0 => Some(Piece::Pawn(Color::White)),
-            1 => Some(Piece::Knight(Color::White)),
-            2 => Some(Piece::Bishop(Color::White)),
-            3 => Some(Piece::Rook(Color::White)),
-            4 => Some(Piece::Queen(Color::White)),
-            5 => Some(Piece::King(Color::White)),
-            6 => Some(Piece::Pawn(Color::Black)),
-            7 => Some(Piece::Knight(Color::Black)),
-            8 => Some(Piece::Bishop(Color::Black)),
-            9 => Some(Piece::Rook(Color::Black)),
-            10 => Some(Piece::Queen(Color::Black)),
-            11 => Some(Piece::King(Color::Black)),
-            _ => None,
-        }
-    }
-
     fn piece_at_square(&self, square: Square) -> Option<Piece> {
         for (i, mask) in self.masks.iter().enumerate() {
             if mask.0 & 1 << square as u8 > 0 {
-                return Self::index_to_piece(i);
+                return Piece::from_mask_index(i);
             }
         }
 
@@ -126,11 +101,11 @@ impl BoardState {
     }
 
     fn mask_mut(&mut self, piece: Piece) -> &mut Mask {
-        &mut self.masks[Self::piece_to_index(piece)]
+        &mut self.masks[piece.to_mask_index()]
     }
 
     fn mask(&self, piece: Piece) -> &Mask {
-        &self.masks[Self::piece_to_index(piece)]
+        &self.masks[piece.to_mask_index()]
     }
 
     fn swap_active_color(&mut self) {

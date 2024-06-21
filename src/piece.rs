@@ -67,4 +67,39 @@ impl Piece {
             _ => None,
         }
     }
+
+    pub fn to_mask_index(&self) -> usize {
+        match self {
+            Piece::Pawn(Color::White) => Piece::WHITE_PAWN_INDEX,
+            Piece::Knight(Color::White) => Piece::WHITE_KNIGHT_INDEX,
+            Piece::Bishop(Color::White) => Piece::WHITE_BISHOP_INDEX,
+            Piece::Rook(Color::White) => Piece::WHITE_ROOK_INDEX,
+            Piece::Queen(Color::White) => Piece::WHITE_QUEEN_INDEX,
+            Piece::King(Color::White) => Piece::WHITE_KING_INDEX,
+            Piece::Pawn(Color::Black) => Piece::BLACK_PAWN_INDEX,
+            Piece::Knight(Color::Black) => Piece::BLACK_KNIGHT_INDEX,
+            Piece::Bishop(Color::Black) => Piece::BLACK_BISHOP_INDEX,
+            Piece::Rook(Color::Black) => Piece::BLACK_ROOK_INDEX,
+            Piece::Queen(Color::Black) => Piece::BLACK_QUEEN_INDEX,
+            Piece::King(Color::Black) => Piece::BLACK_KING_INDEX,
+        }
+    }
+
+    pub fn from_mask_index(i: usize) -> Option<Piece> {
+        match i {
+            Piece::WHITE_PAWN_INDEX => Some(Piece::Pawn(Color::White)),
+            Piece::WHITE_KNIGHT_INDEX => Some(Piece::Knight(Color::White)),
+            Piece::WHITE_BISHOP_INDEX => Some(Piece::Bishop(Color::White)),
+            Piece::WHITE_ROOK_INDEX => Some(Piece::Rook(Color::White)),
+            Piece::WHITE_QUEEN_INDEX => Some(Piece::Queen(Color::White)),
+            Piece::WHITE_KING_INDEX => Some(Piece::King(Color::White)),
+            Piece::BLACK_PAWN_INDEX => Some(Piece::Pawn(Color::Black)),
+            Piece::BLACK_KNIGHT_INDEX => Some(Piece::Knight(Color::Black)),
+            Piece::BLACK_BISHOP_INDEX => Some(Piece::Bishop(Color::Black)),
+            Piece::BLACK_ROOK_INDEX => Some(Piece::Rook(Color::Black)),
+            Piece::BLACK_QUEEN_INDEX => Some(Piece::Queen(Color::Black)),
+            Piece::BLACK_KING_INDEX => Some(Piece::King(Color::Black)),
+            _ => None,
+        }
+    }
 }
