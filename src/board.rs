@@ -21,10 +21,13 @@ struct BoardState {
     masks: [Mask; 12],
 
     // Special moves
-    prev_move: Option<Move>,                   // En passant
-    can_castle_short: bool,                    // Castling kingside
-    can_castle_long: bool,                     // Castling queenside
-    moves_since_last_capture_or_pawn_move: u8, // 50 move rule
+    prev_move: Option<Move>,      // En passant
+    white_can_castle_short: bool, // White castling kingside
+    white_can_castle_long: bool,  // White castling queenside
+    black_can_castle_short: bool, // Black castling kingside
+    black_can_castle_long: bool,  // Black castling queenside
+    halfmoves: u8,                // 50 move rule
+    fullmoves: u32,               // Keeping track of game length
 }
 
 #[allow(unused)]
@@ -36,9 +39,12 @@ impl BoardState {
             masks: [Mask(0); 12],
 
             prev_move: None,
-            can_castle_short: true,
-            can_castle_long: true,
-            moves_since_last_capture_or_pawn_move: 0,
+            white_can_castle_short: true,
+            white_can_castle_long: true,
+            black_can_castle_short: true,
+            black_can_castle_long: true,
+            halfmoves: 0,
+            fullmoves: 0,
         }
     }
 
@@ -340,6 +346,9 @@ impl Board {
         }
     }
 
+    ///```
+    /// const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    /// ```
     pub fn load_from_fen(&mut self, fen: &str) {
         // Reset board
         self.states.clear();
@@ -349,49 +358,155 @@ impl Board {
         // Get segments of FEN string
         let mut segments = fen.split(' ');
 
-        let rows = segments
-            .next()
-            .expect("FEN string should have 6 segments")
-            .split('/')
-            .rev();
+        'pieces: {
+            let rows = segments
+                .next()
+                .expect("FEN string should have 6 segments")
+                .split('/')
+                .rev();
 
-        for (i, row) in rows.enumerate() {
-            let mut chars = row.chars();
-            let mut current_pos = 0;
+            for (i, row) in rows.enumerate() {
+                let mut chars = row.chars();
+                let mut current_pos = 0;
 
-            while current_pos < 8 {
-                if let Some(ch) = chars.next() {
-                    match ch {
-                        // Skip squares
-                        '1'..='8' => {
-                            let digit = ch.to_digit(9).unwrap();
-                            current_pos += digit as usize;
+                while current_pos < 8 {
+                    if let Some(ch) = chars.next() {
+                        match ch {
+                            // Skip squares
+                            '1'..='8' => {
+                                let digit = ch.to_digit(9).unwrap();
+                                current_pos += digit as usize;
+                            }
+
+                            // Add piece
+                            'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q'
+                            | 'k' => {
+                                let piece_type = Piece::from_char(ch).unwrap();
+
+                                let mask = state.mask_mut(piece_type);
+                                mask.0 |= 1 << (current_pos + i * 8);
+                                current_pos += 1;
+                            }
+
+                            // Ignore invalid input (for now)
+                            _ => (),
                         }
-
-                        // Add piece
-                        'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k' => {
-                            let piece_type = Piece::from_char(ch).unwrap();
-
-                            let mask = state.mask_mut(piece_type);
-                            mask.0 |= 1 << (current_pos + i * 8);
-                            current_pos += 1;
-                        }
-
-                        // Ignore invalid input (for now)
-                        _ => (),
+                    } else {
+                        break;
                     }
-                } else {
-                    break;
                 }
             }
         }
 
-        // Check whose turn it is
-        state.current_turn = match segments.next().expect("FEN string should have 6 segments") {
-            "w" => Color::White,
-            "b" => Color::Black,
-            _ => panic!("Second segment of FEN string should be either 'w' or 'b'."),
-        };
+        'current_turn: {
+            state.current_turn = match segments.next().expect("FEN string should have 6 segments") {
+                "w" => Color::White,
+                "b" => Color::Black,
+                _ => panic!("Second segment of FEN string should be either 'w' or 'b'."),
+            };
+        }
+
+        'castling_rights: {
+            let castling_rights = segments.next().expect("FEN string should have 6 segments");
+
+            state.white_can_castle_short = false;
+            state.white_can_castle_long = false;
+            state.black_can_castle_short = false;
+            state.black_can_castle_long = false;
+
+            let mut prev: u8 = 0;
+
+            for ch in castling_rights.chars() {
+                match ch {
+                'K' => {
+                    if prev > 0 {
+                        panic!("Castling rights in FEN string ordered incorrectly");
+                    }
+                    prev = 1;
+                    state.white_can_castle_short = true;
+                }
+                'Q' => {
+                    if prev > 1 {
+                        panic!("Castling rights in FEN string ordered incorrectly");
+                    }
+                    prev = 2;
+                    state.white_can_castle_short = true;
+                }
+                'k' => {
+                    if prev > 2 {
+                        panic!("Castling rights in FEN string ordered incorrectly");
+                    }
+                    prev = 3;
+                    state.white_can_castle_short = true;
+                }
+                'q' => {
+                    if prev > 3 {
+                        panic!("Castling rights in FEN string ordered incorrectly");
+                    }
+                    state.white_can_castle_short = true;
+                }
+                _ => panic!("Third segment of FEN string should only contain the characters 'K', 'Q', 'k', 'q'"),
+            }
+            }
+        }
+
+        'en_passant: {
+            state.prev_move = None;
+
+            let next_segment = segments.next().expect("FEN string should have 6 segments");
+
+            let Some(square) = Square::from_str(next_segment) else {
+                break 'en_passant;
+            };
+
+            let above_rank = square
+                .rank()
+                .plus(1)
+                .expect("En passant square should be on rank 3 or rank 6");
+            let below_rank = square
+                .rank()
+                .minus(1)
+                .expect("En passant square should be on rank 3 or rank 6");
+            let file = square.file();
+
+            let mut mv = match above_rank {
+                Rank::Four => Move {
+                    from: Square::from_coords(below_rank, file),
+                    to: Square::from_coords(above_rank, file),
+                },
+                Rank::Seven => Move {
+                    from: Square::from_coords(above_rank, file),
+                    to: Square::from_coords(below_rank, file),
+                },
+                _ => panic!("En passant square should be on rank 3 or rank 6"),
+            };
+
+            state.prev_move = Some(mv);
+        }
+
+        'halfmoves: {
+            let halfmoves = segments.next().expect("FEN string should have 6 segments");
+            let halfmoves = halfmoves
+                .to_owned()
+                .parse::<u8>()
+                .expect("Halfmove counter should be a number from 0 to 100");
+
+            if halfmoves > 100 {
+                panic!("Halfmove counter should be a number from 0 to 100");
+            }
+
+            state.halfmoves = halfmoves;
+        }
+
+        'fullmoves: {
+            let fullmoves = segments.next().expect("FEN string should have 6 segments");
+            let fullmoves = fullmoves
+                .to_owned()
+                .parse::<u32>()
+                .expect("Halfmove counter should be a number from 0 to 100");
+
+            state.fullmoves = fullmoves;
+        }
 
         self.states.push(state);
     }
@@ -421,6 +536,8 @@ impl Board {
         };
 
         // Update board state
+        let mut is_capture = false;
+
         if is_en_passant {
             let rank = mv.to.rank();
             let file = mv.to.file();
@@ -438,12 +555,30 @@ impl Board {
             };
             *enemy_pawns &= !(Square::from_coords(offset_rank, file)).mask();
         } else if let Some(to_piece) = new_state.piece_at_square(mv.to) {
+            is_capture = true;
+
+            // Remove captured piece
             let mask = new_state.mask_mut(to_piece);
             mask.0 &= !(1 << mv.to as usize);
         }
 
         let from_mask = new_state.mask_mut(from_piece);
         from_mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
+
+        // Update move counts
+        if new_state.current_turn == Color::Black {
+            new_state.fullmoves += 1;
+        }
+        new_state.halfmoves = match from_piece {
+            Piece::Pawn(_) => 0,
+            _ => {
+                if is_capture {
+                    0
+                } else {
+                    new_state.halfmoves + 1
+                }
+            }
+        };
 
         new_state.prev_move = Some(mv);
         new_state.swap_current_turn();
@@ -470,6 +605,14 @@ impl Board {
 #[cfg(test)]
 mod board_tests {
     use super::*;
+
+    #[test]
+    fn load_from_fen() {
+        const TEST_POSITION_FEN: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+        let mut board = Board::new();
+        board.load_from_fen(TEST_POSITION_FEN);
+        board.current_state().unwrap().all_pieces_mask().print();
+    }
 
     #[test]
     fn en_passant_legal_move() {
