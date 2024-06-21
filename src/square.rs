@@ -369,6 +369,15 @@ impl Rank {
         }
     }
 
+    pub fn from_index(i: usize) -> Option<Self> {
+        if i > 63 {
+            return None;
+        }
+
+        let normalised = i / 8;
+        Self::from_u8(normalised as u8)
+    }
+
     pub fn plus(&self, val: u8) -> Option<Self> {
         Self::from_u8(*self as u8 + val)
     }
@@ -407,6 +416,15 @@ impl File {
             7 => Some(File::H),
             _ => None,
         }
+    }
+
+    pub fn from_index(i: usize) -> Option<Self> {
+        if i > 63 {
+            return None;
+        }
+
+        let normalised = i / 8;
+        Self::from_u8(normalised as u8)
     }
 
     pub fn plus(&self, val: u8) -> Option<Self> {

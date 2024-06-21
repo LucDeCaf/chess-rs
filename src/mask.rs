@@ -139,8 +139,6 @@ impl Not for Mask {
 
 #[cfg(test)]
 mod mask_tests {
-    use crate::piece::Direction;
-
     use super::*;
 
     #[test]
@@ -158,16 +156,5 @@ mod mask_tests {
             vec![Square::A1, Square::A2, Square::E2, Square::G2]
         );
         assert_eq!(Mask(1).ones(), vec![Square::A1]);
-    }
-
-    #[test]
-    fn test_submasks() {
-        let rook_submasks = Direction::Orthogonal.all_blockers();
-        let rook_a1_mask = rook_submasks[0];
-
-        for submask in &rook_a1_mask.subsets()[0..16] {
-            submask.print();
-            println!();
-        }
     }
 }
