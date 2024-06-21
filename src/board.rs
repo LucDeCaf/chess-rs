@@ -292,6 +292,15 @@ impl BoardState {
             return false;
         };
 
+        let Some(piece) = self.piece_at_square(last_move.to) else {
+            return false;
+        };
+
+        match piece {
+            Piece::Pawn(_) => (),
+            _ => return false,
+        };
+
         let rank_diff = last_move.rank_diff();
         let file_diff = last_move.file_diff();
         if rank_diff != 2 || file_diff != 0 {
@@ -532,21 +541,55 @@ impl Board {
     pub fn make_move(&mut self, mv: Move) -> Result<(), MoveError> {
         // Store copy of old board state
         let mut new_state = self.current_state()?.clone();
+        let current_turn = new_state.current_turn;
+
+        let Some(from_piece) = new_state.piece_at_square(mv.from) else {
+            return Err(MoveError::MissingPiece);
+        };
+
+        // Check if is en passant
+        let is_en_passant = match from_piece {
+            // Check if moved piece is a pawn
+            Piece::Pawn(_) => {
+                if let Some(mask) = new_state.en_passant_mask() {
+                    // Check if en passant mask equals move mask
+                    mask == mv.to.mask()
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
 
         // Update board state
-        if let Some(to_piece) = new_state.piece_at_square(mv.to) {
+        if is_en_passant {
+            let rank = mv.to.rank();
+            let file = mv.to.file();
+
+            let offset_rank = match current_turn {
+                Color::White => rank.minus(1),
+                Color::Black => rank.plus(1),
+            }
+            .unwrap();
+
+            // Capture the pawn when en passant is played
+            let enemy_pawns = match current_turn {
+                Color::White => &mut new_state.black_pawns,
+                Color::Black => &mut new_state.white_pawns,
+            };
+            enemy_pawns.mask &= !(Square::from_coords(offset_rank, file)).mask();
+        } else if let Some(to_piece) = new_state.piece_at_square(mv.to) {
             let to_bitboard = new_state.bitboard_mut(to_piece);
             to_bitboard.mask.0 &= !(1 << mv.to as usize);
         }
 
-        if let Some(from_piece) = new_state.piece_at_square(mv.from) {
-            let from_bitboard = new_state.bitboard_mut(from_piece);
-            from_bitboard.mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
-        }
+        let from_bitboard = new_state.bitboard_mut(from_piece);
+        from_bitboard.mask.0 ^= (1 << mv.from as usize) + (1 << mv.to as usize);
 
         new_state.prev_move = Some(mv);
         new_state.swap_current_turn();
 
+        // Add new state to state history
         self.states.push(new_state);
 
         Ok(())
@@ -621,5 +664,28 @@ mod board_tests {
         });
 
         assert_eq!(board.current_state().unwrap().en_passant_mask(), None);
+    }
+
+    #[test]
+    fn en_passant_captures_pawn() {
+        let mut board = Board::new();
+        board.load_from_fen(START_FEN);
+
+        let _ = board.make_move(Move {
+            from: Square::E2,
+            to: Square::E5,
+        });
+
+        let _ = board.make_move(Move {
+            from: Square::D7,
+            to: Square::D5,
+        });
+
+        let _ = board.make_move(Move {
+            from: Square::E5,
+            to: Square::D6,
+        });
+
+        board.current_state().unwrap().all_pieces_mask().print();
     }
 }

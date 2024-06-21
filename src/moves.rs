@@ -37,4 +37,5 @@ impl Move {
 #[derive(Debug, Clone)]
 pub enum MoveError {
     NoBoardState,
+    MissingPiece,
 }
