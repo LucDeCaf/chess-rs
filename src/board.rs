@@ -1,11 +1,8 @@
 use crate::mask::Mask;
 use crate::move_gen::move_gen::SlidingMoves;
-use crate::move_gen::{
-    move_masks::{
-        BLACK_PAWN_CAPTURE_MASKS, BLACK_PAWN_MOVE_MASKS, KING_MOVE_MASKS, KNIGHT_MOVE_MASKS,
-        WHITE_PAWN_CAPTURE_MASKS, WHITE_PAWN_MOVE_MASKS,
-    },
-    // move_gen::SlidingMoves,
+use crate::move_gen::move_masks::{
+    BISHOP_MOVE_MASKS, BLACK_PAWN_CAPTURE_MASKS, BLACK_PAWN_MOVE_MASKS, KING_MOVE_MASKS,
+    KNIGHT_MOVE_MASKS, ROOK_MOVE_MASKS, WHITE_PAWN_CAPTURE_MASKS, WHITE_PAWN_MOVE_MASKS,
 };
 use crate::moves::{Move, MoveError};
 use crate::piece::{Color, Piece};
@@ -254,409 +251,17 @@ impl BoardState {
         Ok(state)
     }
 
-    fn white_pieces(&self) -> &[Mask] {
-        &self.masks[0..6]
-    }
-
-    fn black_pieces(&self) -> &[Mask] {
-        &self.masks[6..12]
-    }
-
-    fn friendly_pieces(&self, color: Color) -> &[Mask] {
-        match color {
-            Color::White => self.white_pieces(),
-            Color::Black => self.black_pieces(),
-        }
-    }
-
-    fn enemy_pieces(&self, color: Color) -> &[Mask] {
-        match color {
-            Color::White => self.black_pieces(),
-            Color::Black => self.white_pieces(),
-        }
-    }
-
-    fn piece_at_square(&self, square: Square) -> Option<Piece> {
-        for (i, mask) in self.masks.iter().enumerate() {
-            if mask.0 & 1 << square as u8 > 0 {
-                return Piece::from_mask_index(i);
-            }
-        }
-
-        None
-    }
-
-    fn mask_mut(&mut self, piece: Piece) -> &mut Mask {
-        &mut self.masks[piece.to_mask_index()]
-    }
-
-    fn mask(&self, piece: Piece) -> Mask {
-        self.masks[piece.to_mask_index()]
-    }
-
-    fn swap_active_color(&mut self) {
-        self.active_color = match self.active_color {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        };
-    }
-
-    fn clear_pieces(&mut self) {
-        for mask in self.masks.iter_mut() {
-            mask.0 = 0
-        }
-    }
-
-    fn all_pieces_mask(&self) -> Mask {
-        self.white_pieces_mask() | self.black_pieces_mask()
-    }
-
-    fn black_pieces_mask(&self) -> Mask {
-        let mut mask = Mask(0);
-        for m in self.black_pieces() {
-            mask |= *m;
-        }
-        mask
-    }
-
-    fn white_pieces_mask(&self) -> Mask {
-        let mut mask = Mask(0);
-        for m in self.white_pieces() {
-            mask |= *m;
-        }
-        mask
-    }
-
-    fn friendly_pieces_mask(&self, color: Color) -> Mask {
-        match color {
-            Color::White => self.white_pieces_mask(),
-            Color::Black => self.black_pieces_mask(),
-        }
-    }
-
-    fn enemy_pieces_mask(&self, color: Color) -> Mask {
-        match color {
-            Color::White => self.black_pieces_mask(),
-            Color::Black => self.white_pieces_mask(),
-        }
-    }
-
-    pub fn possible_en_passant(&self) -> bool {
-        let active_color = self.active_color;
-        let Some(last_move) = self.last_move else {
-            return false;
-        };
-
-        let Some(piece) = self.piece_at_square(last_move.to) else {
-            return false;
-        };
-
-        match piece {
-            Piece::Pawn(_) => (),
-            _ => return false,
-        };
-
-        let rank_diff = last_move.rank_diff();
-        let file_diff = last_move.file_diff();
-        if rank_diff != 2 || file_diff != 0 {
-            return false;
-        }
-
-        return active_color == Color::White && last_move.to.rank() == Rank::Five
-            || active_color == Color::Black && last_move.to.rank() == Rank::Four;
-    }
-
-    pub fn en_passant_mask(&self) -> Option<Mask> {
-        let active_color = self.active_color;
-        let last_move = self.last_move?;
-
-        let to_rank = last_move.to.rank();
-        let from_rank = last_move.from.rank();
-
-        if !self.possible_en_passant() {
-            return None;
-        }
-
-        let capture_rank = match active_color {
-            Color::White => to_rank.plus(1)?,
-            Color::Black => to_rank.minus(1)?,
-        };
-        let capture_file = last_move.to.file();
-
-        Some(Square::from_coords(capture_rank, capture_file).mask())
-    }
-
-    pub fn is_move_legal(&self, mv: Move, sliding_moves: &SlidingMoves) -> bool {
-        // Prevent piece from moving to itself
-        if mv.from == mv.to {
-            return false;
-        }
-
-        let Some((legal_moves, _)) = self.get_pseudolegal_move_mask(mv.from, sliding_moves) else {
-            return false;
-        };
-
-        (legal_moves & mv.to.mask()).0 > 0
-    }
-
-    fn move_masks(&self, piece: Piece) -> Option<Vec<Mask>> {
-        match piece {
-            Piece::Pawn(color) => match color {
-                Color::White => Some(Vec::from_iter(WHITE_PAWN_MOVE_MASKS)),
-                Color::Black => Some(Vec::from_iter(BLACK_PAWN_MOVE_MASKS)),
-            },
-            Piece::Knight(_) => Some(Vec::from_iter(KNIGHT_MOVE_MASKS)),
-            Piece::King(_) => Some(Vec::from_iter(KING_MOVE_MASKS)),
-            _ => None,
-        }
-    }
-
-    pub fn can_castle(
-        &self,
-        color: Color,
-        direction: CastleDirection,
-        sliding_moves: &SlidingMoves,
-    ) -> bool {
-        const WHITE_BLOCKERS_SHORT: &[Square] = &[Square::F1, Square::G1];
-        const WHITE_BLOCKERS_LONG: &[Square] = &[Square::D1, Square::C1, Square::B1];
-        const BLACK_BLOCKERS_SHORT: &[Square] = &[Square::F8, Square::G8];
-        const BLACK_BLOCKERS_LONG: &[Square] = &[Square::D8, Square::C8, Square::B8];
-
-        let king_square = match color {
-            Color::White => Square::E1,
-            Color::Black => Square::E8,
-        };
-
-        let enemy_color = color.swapped();
-
-        // Check if king in check
-        if self.attacked_by(king_square, enemy_color, sliding_moves) {
-            return false;
-        }
-
-        let relevant_blockers = match color {
-            Color::White => match direction {
-                CastleDirection::Kingside => WHITE_BLOCKERS_SHORT,
-                CastleDirection::Queenside => WHITE_BLOCKERS_LONG,
-            },
-            Color::Black => match direction {
-                CastleDirection::Kingside => BLACK_BLOCKERS_SHORT,
-                CastleDirection::Queenside => BLACK_BLOCKERS_LONG,
-            },
-        };
-
-        // Check for pieces in the way
-        for blocker_square in relevant_blockers {
-            if let Some(_) = self.piece_at_square(*blocker_square) {
-                return false;
-            }
-        }
-
-        // Check for checks in the way of the king's path
-        for blocker_square in &relevant_blockers[..2] {
-            if self.attacked_by(*blocker_square, enemy_color, sliding_moves) {
-                return false;
-            };
-        }
-
-        true
-    }
-
-    pub fn in_check(&self, color: Color, sliding_moves: &SlidingMoves) -> bool {
-        let king_mask = self.mask(Piece::King(color));
-        let king_square: Square = king_mask.ones()[0];
-
-        self.attacked_by(king_square, color, sliding_moves)
-    }
-
-    pub fn attacked_by(&self, square: Square, color: Color, sliding_moves: &SlidingMoves) -> bool {
-        let square_index = square as usize;
-
-        let pawn_mask = self.mask(Piece::Pawn(color));
-        let pawn_attacks = match color {
-            Color::White => &WHITE_PAWN_CAPTURE_MASKS,
-            Color::Black => &BLACK_PAWN_CAPTURE_MASKS,
-        };
-        if (pawn_attacks[square_index] & pawn_mask).0 > 0 {
-            return true;
-        }
-
-        let knights = self.mask(Piece::Knight(color));
-        if (knights & KNIGHT_MOVE_MASKS[square_index]).0 > 0 {
-            return true;
-        }
-
-        let king = self.mask(Piece::King(color));
-        if (king & KING_MOVE_MASKS[square_index]).0 > 0 {
-            return true;
-        }
-
-        let rooks_queens = self.mask(Piece::Rook(color)) | self.mask(Piece::Queen(color));
-        if (sliding_moves.get_rook_moves(square, self.all_pieces_mask()) & rooks_queens).0 > 0 {
-            return true;
-        }
-
-        let bishops_queens = self.mask(Piece::Bishop(color)) | self.mask(Piece::Queen(color));
-        if (sliding_moves.get_bishop_moves(square, self.all_pieces_mask()) & bishops_queens).0 > 0 {
-            return true;
-        }
-
-        return false;
-    }
-
-    pub fn get_pseudolegal_move_mask(
-        &self,
-        square: Square,
-        sliding_moves: &SlidingMoves,
-    ) -> Option<(Mask, Piece)> {
-        let blockers = self.all_pieces_mask();
-        let tile_mask = square.mask();
-
-        let piece = self.piece_at_square(square)?;
-        let color = piece.color();
-
-        // Prevent moving pieces of the wrong colour
-        if color != self.active_color {
-            println!("bad color");
-            return None;
-        }
-
-        let mask = self.mask(piece);
-
-        let mut move_mask: Mask;
-
-        if piece.is_slider() {
-            move_mask = Mask(0);
-
-            match piece {
-                Piece::Rook(_) | Piece::Queen(_) => {
-                    move_mask |= sliding_moves.get_rook_moves(square, blockers);
-                }
-                Piece::Bishop(_) | Piece::Queen(_) => {
-                    move_mask |= sliding_moves.get_bishop_moves(square, blockers);
-                }
-                _ => (),
-            }
-        } else {
-            // Grab move mask for the piece at the current square
-            move_mask = self.move_masks(piece)?[square.to_shift()];
-
-            // Special moves
-            match piece {
-                Piece::Pawn(_) => {
-                    // Handle pawn captures and en passant
-                    let capture_mask = match color {
-                        Color::White => WHITE_PAWN_CAPTURE_MASKS[square.to_shift()],
-                        Color::Black => BLACK_PAWN_CAPTURE_MASKS[square.to_shift()],
-                    };
-
-                    move_mask |= capture_mask & blockers;
-
-                    if let Some(en_passant_mask) = self.en_passant_mask() {
-                        // If en passant mask can be found in capture mask
-                        if capture_mask & en_passant_mask != Mask(0) {
-                            move_mask |= en_passant_mask;
-                        }
-                    }
-                }
-                Piece::King(color) => {
-                    // Kingside castling
-                    if self.can_castle(color, CastleDirection::Kingside, sliding_moves) {
-                        move_mask |= match color {
-                            Color::White => Square::G1,
-                            Color::Black => Square::G8,
-                        }
-                        .mask();
-                    }
-
-                    // Queenside castling
-                    if self.can_castle(color, CastleDirection::Queenside, sliding_moves) {
-                        move_mask |= match color {
-                            Color::White => Square::C1,
-                            Color::Black => Square::C8,
-                        }
-                        .mask();
-                    }
-                }
-                _ => (),
-            }
-        }
-
-        // Filter out moves that capture one's own pieces
-        move_mask &= !self.friendly_pieces_mask(color);
-
-        Some((move_mask, piece))
-    }
-
-    pub fn get_pseudolegal_moves(
-        &self,
-        square: Square,
-        sliding_moves: &SlidingMoves,
-    ) -> Option<(Vec<Move>, Piece)> {
-        let (move_mask, piece) = self.get_pseudolegal_move_mask(square, sliding_moves)?;
-        Some((Move::from_move_mask(square, move_mask), piece))
-    }
-}
-
-#[derive(Debug)]
-pub struct Board {
-    // Board state and state history
-    states: Vec<BoardState>,
-
-    // Sliding piece magic bitboard helper struct
-    sliding_moves: SlidingMoves,
-}
-
-#[allow(unused)]
-impl Board {
-    pub fn new() -> Self {
-        // Use rook and bishop masks to generate queen masks
-        let board = Board {
-            states: Vec::new(),
-            sliding_moves: SlidingMoves::init(),
-        };
-
-        board
-    }
-
-    fn current_state(&self) -> Result<&BoardState, MoveError> {
-        match self.states.last() {
-            Some(state) => Ok(state),
-            None => Err(MoveError::NoBoardState),
-        }
-    }
-
-    fn current_state_mut(&mut self) -> Result<&mut BoardState, MoveError> {
-        match self.states.last_mut() {
-            Some(state) => Ok(state),
-            None => Err(MoveError::NoBoardState),
-        }
-    }
-
-    pub fn load_from_fen(&mut self, fen: &str) -> Result<(), FenError> {
-        let state = BoardState::from_fen(fen)?;
-
-        self.states.clear();
-        self.states.push(state);
-
-        Ok(())
-    }
-
     /// Makes a move on the board, regardless of whether the move is legal or not.
     ///
     /// Despite its name, this function does still check if the move is possible to make or not.
-    pub fn make_move_unchecked(&mut self, mv: Move) -> Result<(), MoveError> {
+    pub fn make_move_unchecked(&self, mv: Move) -> Result<BoardState, MoveError> {
         // Store copy of old board state
-        let mut new_state = self.current_state()?.clone();
+        let mut new_state = self.clone();
         let active_color = new_state.active_color;
 
         let Some(from_piece) = new_state.piece_at_square(mv.from) else {
             return Err(MoveError::MissingPiece);
         };
-
-        if from_piece.color() != active_color {
-            return Err(MoveError::WrongColor);
-        }
 
         let mut special_move = None;
 
@@ -819,9 +424,425 @@ impl Board {
         new_state.last_move = Some(mv);
         new_state.swap_active_color();
 
-        // Add new state to state history
-        self.states.push(new_state);
+        Ok(new_state)
+    }
 
+    pub fn make_move(
+        &self,
+        mv: Move,
+        sliding_moves: &SlidingMoves,
+    ) -> Result<BoardState, MoveError> {
+        // Make sure move isn't illegal
+        if !self.is_move_legal(mv, sliding_moves) {
+            return Err(MoveError::IllegalMove);
+        }
+
+        self.make_move_unchecked(mv)
+    }
+
+    fn white_pieces(&self) -> &[Mask] {
+        &self.masks[0..6]
+    }
+
+    fn black_pieces(&self) -> &[Mask] {
+        &self.masks[6..12]
+    }
+
+    fn friendly_pieces(&self, color: Color) -> &[Mask] {
+        match color {
+            Color::White => self.white_pieces(),
+            Color::Black => self.black_pieces(),
+        }
+    }
+
+    fn enemy_pieces(&self, color: Color) -> &[Mask] {
+        match color {
+            Color::White => self.black_pieces(),
+            Color::Black => self.white_pieces(),
+        }
+    }
+
+    fn piece_at_square(&self, square: Square) -> Option<Piece> {
+        for (i, mask) in self.masks.iter().enumerate() {
+            if mask.0 & 1 << square as u8 > 0 {
+                return Piece::from_mask_index(i);
+            }
+        }
+
+        None
+    }
+
+    fn mask_mut(&mut self, piece: Piece) -> &mut Mask {
+        &mut self.masks[piece.to_mask_index()]
+    }
+
+    fn mask(&self, piece: Piece) -> Mask {
+        self.masks[piece.to_mask_index()]
+    }
+
+    fn swap_active_color(&mut self) {
+        self.active_color = match self.active_color {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        };
+    }
+
+    fn clear_pieces(&mut self) {
+        for mask in self.masks.iter_mut() {
+            mask.0 = 0
+        }
+    }
+
+    fn all_pieces_mask(&self) -> Mask {
+        self.white_pieces_mask() | self.black_pieces_mask()
+    }
+
+    fn black_pieces_mask(&self) -> Mask {
+        let mut mask = Mask(0);
+        for m in self.black_pieces() {
+            mask |= *m;
+        }
+        mask
+    }
+
+    fn white_pieces_mask(&self) -> Mask {
+        let mut mask = Mask(0);
+        for m in self.white_pieces() {
+            mask |= *m;
+        }
+        mask
+    }
+
+    fn friendly_pieces_mask(&self, color: Color) -> Mask {
+        match color {
+            Color::White => self.white_pieces_mask(),
+            Color::Black => self.black_pieces_mask(),
+        }
+    }
+
+    fn enemy_pieces_mask(&self, color: Color) -> Mask {
+        match color {
+            Color::White => self.black_pieces_mask(),
+            Color::Black => self.white_pieces_mask(),
+        }
+    }
+
+    pub fn possible_en_passant(&self) -> bool {
+        let active_color = self.active_color;
+        let Some(last_move) = self.last_move else {
+            return false;
+        };
+
+        let Some(piece) = self.piece_at_square(last_move.to) else {
+            return false;
+        };
+
+        match piece {
+            Piece::Pawn(_) => (),
+            _ => return false,
+        };
+
+        let rank_diff = last_move.rank_diff();
+        let file_diff = last_move.file_diff();
+        if rank_diff != 2 || file_diff != 0 {
+            return false;
+        }
+
+        return active_color == Color::White && last_move.to.rank() == Rank::Five
+            || active_color == Color::Black && last_move.to.rank() == Rank::Four;
+    }
+
+    pub fn en_passant_mask(&self) -> Option<Mask> {
+        let active_color = self.active_color;
+        let last_move = self.last_move?;
+
+        let to_rank = last_move.to.rank();
+        let from_rank = last_move.from.rank();
+
+        if !self.possible_en_passant() {
+            return None;
+        }
+
+        let capture_rank = match active_color {
+            Color::White => to_rank.plus(1)?,
+            Color::Black => to_rank.minus(1)?,
+        };
+        let capture_file = last_move.to.file();
+
+        Some(Square::from_coords(capture_rank, capture_file).mask())
+    }
+
+    pub fn is_move_legal(&self, mv: Move, sliding_moves: &SlidingMoves) -> bool {
+        // Prevent piece from moving to itself
+        if mv.from == mv.to {
+            return false;
+        }
+
+        // Play move temporarily (also ensures it can be played)
+        let Ok(mut potential_state) = self.make_move_unchecked(mv) else {
+            return false;
+        };
+
+        // Make sure move doesn't leave king in check
+        let Some(king_square) = Square::from_mask(self.mask(Piece::King(self.active_color))) else {
+            return false;
+        };
+        if potential_state.attacked_by(king_square, potential_state.active_color, sliding_moves) {
+            return false;
+        }
+
+        true
+    }
+
+    fn move_masks(&self, piece: Piece) -> Vec<Mask> {
+        match piece {
+            Piece::Pawn(color) => match color {
+                Color::White => Vec::from_iter(WHITE_PAWN_MOVE_MASKS),
+                Color::Black => Vec::from_iter(BLACK_PAWN_MOVE_MASKS),
+            },
+            Piece::Knight(_) => Vec::from_iter(KNIGHT_MOVE_MASKS),
+            Piece::Bishop(_) => Vec::from_iter(BISHOP_MOVE_MASKS),
+            Piece::King(_) => Vec::from_iter(KING_MOVE_MASKS),
+            Piece::Rook(_) => Vec::from_iter(ROOK_MOVE_MASKS),
+            Piece::Queen(_) => Vec::from_iter([ROOK_MOVE_MASKS, BISHOP_MOVE_MASKS].concat()),
+        }
+    }
+
+    pub fn can_castle(
+        &self,
+        color: Color,
+        direction: CastleDirection,
+        sliding_moves: &SlidingMoves,
+    ) -> bool {
+        const WHITE_BLOCKERS_SHORT: &[Square] = &[Square::F1, Square::G1];
+        const WHITE_BLOCKERS_LONG: &[Square] = &[Square::D1, Square::C1, Square::B1];
+        const BLACK_BLOCKERS_SHORT: &[Square] = &[Square::F8, Square::G8];
+        const BLACK_BLOCKERS_LONG: &[Square] = &[Square::D8, Square::C8, Square::B8];
+
+        let king_square = match color {
+            Color::White => Square::E1,
+            Color::Black => Square::E8,
+        };
+
+        let enemy_color = color.swapped();
+
+        // Check if king in check
+        if self.attacked_by(king_square, enemy_color, sliding_moves) {
+            return false;
+        }
+
+        let relevant_blockers = match color {
+            Color::White => match direction {
+                CastleDirection::Kingside => WHITE_BLOCKERS_SHORT,
+                CastleDirection::Queenside => WHITE_BLOCKERS_LONG,
+            },
+            Color::Black => match direction {
+                CastleDirection::Kingside => BLACK_BLOCKERS_SHORT,
+                CastleDirection::Queenside => BLACK_BLOCKERS_LONG,
+            },
+        };
+
+        // Check for pieces in the way
+        for blocker_square in relevant_blockers {
+            if let Some(_) = self.piece_at_square(*blocker_square) {
+                return false;
+            }
+        }
+
+        // Check for checks in the way of the king's path
+        for blocker_square in &relevant_blockers[..2] {
+            if self.attacked_by(*blocker_square, enemy_color, sliding_moves) {
+                return false;
+            };
+        }
+
+        true
+    }
+
+    pub fn in_check(&self, color: Color, sliding_moves: &SlidingMoves) -> bool {
+        let king_mask = self.mask(Piece::King(color));
+        let king_square: Square = king_mask.ones()[0];
+
+        self.attacked_by(king_square, color, sliding_moves)
+    }
+
+    pub fn attacked_by(&self, square: Square, color: Color, sliding_moves: &SlidingMoves) -> bool {
+        let square_index = square as usize;
+
+        let pawn_mask = self.mask(Piece::Pawn(color));
+        let pawn_attacks = match color {
+            Color::White => &WHITE_PAWN_CAPTURE_MASKS,
+            Color::Black => &BLACK_PAWN_CAPTURE_MASKS,
+        };
+        if (pawn_attacks[square_index] & pawn_mask).0 > 0 {
+            return true;
+        }
+
+        let knights = self.mask(Piece::Knight(color));
+        if (knights & KNIGHT_MOVE_MASKS[square_index]).0 > 0 {
+            return true;
+        }
+
+        let king = self.mask(Piece::King(color));
+        if (king & KING_MOVE_MASKS[square_index]).0 > 0 {
+            return true;
+        }
+
+        let rooks_queens = self.mask(Piece::Rook(color)) | self.mask(Piece::Queen(color));
+        if (sliding_moves.get_rook_moves(square, self.all_pieces_mask()) & rooks_queens).0 > 0 {
+            return true;
+        }
+
+        let bishops_queens = self.mask(Piece::Bishop(color)) | self.mask(Piece::Queen(color));
+        if (sliding_moves.get_bishop_moves(square, self.all_pieces_mask()) & bishops_queens).0 > 0 {
+            return true;
+        }
+
+        return false;
+    }
+
+    pub fn get_pseudolegal_move_mask(&self, square: Square, sliding_moves: &SlidingMoves) -> Mask {
+        let blockers = self.all_pieces_mask();
+        let tile_mask = square.mask();
+
+        let Some(piece) = self.piece_at_square(square) else {
+            return Mask(0);
+        };
+        let color = piece.color();
+
+        // Prevent moving pieces of the wrong colour
+        if color != self.active_color {
+            return Mask(0);
+        }
+
+        let mask = self.mask(piece);
+
+        let mut move_mask: Mask;
+
+        if piece.is_slider() {
+            move_mask = Mask(0);
+
+            match piece {
+                Piece::Rook(_) | Piece::Queen(_) => {
+                    move_mask |= sliding_moves.get_rook_moves(square, blockers);
+                }
+                Piece::Bishop(_) | Piece::Queen(_) => {
+                    move_mask |= sliding_moves.get_bishop_moves(square, blockers);
+                }
+                _ => (),
+            }
+        } else {
+            // Grab move mask for the piece at the current square
+            move_mask = self.move_masks(piece)[square.to_shift()];
+
+            // Special moves
+            match piece {
+                Piece::Pawn(_) => {
+                    // Handle pawn captures and en passant
+                    let capture_mask = match color {
+                        Color::White => WHITE_PAWN_CAPTURE_MASKS[square.to_shift()],
+                        Color::Black => BLACK_PAWN_CAPTURE_MASKS[square.to_shift()],
+                    };
+
+                    move_mask |= capture_mask & blockers;
+
+                    if let Some(en_passant_mask) = self.en_passant_mask() {
+                        // If en passant mask can be found in capture mask
+                        if capture_mask & en_passant_mask != Mask(0) {
+                            move_mask |= en_passant_mask;
+                        }
+                    }
+                }
+                Piece::King(color) => {
+                    // Kingside castling
+                    if self.can_castle(color, CastleDirection::Kingside, sliding_moves) {
+                        move_mask |= match color {
+                            Color::White => Square::G1,
+                            Color::Black => Square::G8,
+                        }
+                        .mask();
+                    }
+
+                    // Queenside castling
+                    if self.can_castle(color, CastleDirection::Queenside, sliding_moves) {
+                        move_mask |= match color {
+                            Color::White => Square::C1,
+                            Color::Black => Square::C8,
+                        }
+                        .mask();
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        // Filter out moves that capture one's own pieces
+        move_mask &= !self.friendly_pieces_mask(color);
+
+        move_mask
+    }
+
+    pub fn get_pseudolegal_moves(&self, square: Square, sliding_moves: &SlidingMoves) -> Vec<Move> {
+        let move_mask = self.get_pseudolegal_move_mask(square, sliding_moves);
+        Move::from_move_mask(square, move_mask)
+    }
+}
+
+#[derive(Debug)]
+pub struct Board {
+    // Board state and state history
+    states: Vec<BoardState>,
+
+    // Sliding piece magic bitboard helper struct
+    sliding_moves: SlidingMoves,
+}
+
+#[allow(unused)]
+impl Board {
+    pub fn new() -> Self {
+        // Use rook and bishop masks to generate queen masks
+        let board = Board {
+            states: Vec::new(),
+            sliding_moves: SlidingMoves::init(),
+        };
+
+        board
+    }
+
+    fn current_state(&self) -> Result<&BoardState, MoveError> {
+        match self.states.last() {
+            Some(state) => Ok(state),
+            None => Err(MoveError::NoBoardState),
+        }
+    }
+
+    fn current_state_mut(&mut self) -> Result<&mut BoardState, MoveError> {
+        match self.states.last_mut() {
+            Some(state) => Ok(state),
+            None => Err(MoveError::NoBoardState),
+        }
+    }
+
+    pub fn load_from_fen(&mut self, fen: &str) -> Result<(), FenError> {
+        let state = BoardState::from_fen(fen)?;
+
+        self.states.clear();
+        self.states.push(state);
+
+        Ok(())
+    }
+
+    pub fn make_move_unchecked(&mut self, mv: Move) -> Result<(), MoveError> {
+        let old_state = self.current_state()?;
+        let new_state = old_state.make_move_unchecked(mv)?;
+        self.states.push(new_state);
+        Ok(())
+    }
+
+    pub fn make_move(&mut self, mv: Move) -> Result<(), MoveError> {
+        let old_state = self.current_state()?;
+        let new_state = old_state.make_move(mv, &self.sliding_moves)?;
+        self.states.push(new_state);
         Ok(())
     }
 
@@ -871,15 +892,19 @@ mod board_tests {
         let mut board = Board::new();
         board.load_from_fen(START_FEN).unwrap();
 
-        let _ = board.make_move_unchecked(Move {
-            from: Square::E2,
-            to: Square::E5,
-        });
+        board
+            .make_move_unchecked(Move {
+                from: Square::E2,
+                to: Square::E5,
+            })
+            .unwrap();
 
-        let _ = board.make_move_unchecked(Move {
-            from: Square::D7,
-            to: Square::D5,
-        });
+        board
+            .make_move_unchecked(Move {
+                from: Square::D7,
+                to: Square::D5,
+            })
+            .unwrap();
 
         assert!(board.is_move_legal(Move {
             from: Square::E5,

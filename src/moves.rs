@@ -36,6 +36,7 @@ impl Move {
 
 #[derive(Debug, Clone)]
 pub enum MoveError {
+    IllegalMove,
     NoBoardState,
     MissingPiece,
     WrongColor,
