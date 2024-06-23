@@ -37,7 +37,7 @@ fn process_command(command: &Command, board: &mut Board) -> Option<&'static str>
                     board.load_from_fen(START_FEN);
                     continue;
                 }
-                let _ = board.make_move(Move::from_long_algebraic(mv).unwrap());
+                let _ = board.make_move_unchecked(Move::from_long_algebraic(mv).unwrap());
             }
             None
         }

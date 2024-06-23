@@ -49,32 +49,36 @@ fn main() -> std::io::Result<()> {
     const FILE_NAME: &str = "magics.rs";
 
     let rook_index_bits = 16;
-    let (rook_magics, _) = create_magics(Direction::Orthogonal, rook_index_bits);
+    let (rook_magics, _rook_table) = create_magics(Direction::Orthogonal, rook_index_bits);
 
     let bishop_index_bits = 14;
-    let (bishop_magics, _) = create_magics(Direction::Orthogonal, bishop_index_bits);
+    let (bishop_magics, _bishop_table) = create_magics(Direction::Orthogonal, bishop_index_bits);
 
-    let mut buf = String::new();
+    let mut buf = String::from("use super::move_gen::MagicEntry;\nuse crate::mask::Mask;\n");
 
     // Rook magics
     buf.push_str(&format!(
-        "pub const ROOK_INDEX_BITS: u8 = {};\n",
-        rook_index_bits,
+        "pub const ROOK_MAGICS: &[MagicEntry; 64] = &{:#?};\n",
+        rook_magics
     ));
-    buf.push_str(&format!(
-        "pub const ROOK_MAGICS: &[u64; 64] = &{:#?};\n",
-        rook_magics.into_iter().map(|m| m.magic).collect::<Vec<u64>>()
-    ));
+
+    // // Rook move table
+    // buf.push_str(&format!(
+    //     "pub const ROOK_MAGIC_TABLE: &[&[Mask]; 64] = {:?};\n",
+    //     rook_table
+    // ));
 
     // Bishop magics
     buf.push_str(&format!(
-        "pub const BISHOP_INDEX_BITS: u8 = {};\n",
-        bishop_index_bits
+        "pub const BISHOP_MAGICS: &[MagicEntry; 64] = &{:#?};\n",
+        bishop_magics
     ));
-    buf.push_str(&format!(
-        "pub const BISHOP_MAGICS: &[u64; 64] = &{:#?};\n",
-        bishop_magics.into_iter().map(|m| m.magic).collect::<Vec<u64>>()
-    ));
+
+    // // Bishop move table
+    // buf.push_str(&format!(
+    //     "pub const ROOK_MAGIC_TABLE: &[&[Mask]; 64] = {:?};\n",
+    //     bishop_table
+    // ));
 
     fs::create_dir_all(DIR_PATH)?;
     fs::write(format!("{DIR_PATH}/{FILE_NAME}"), buf)?;

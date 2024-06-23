@@ -8,6 +8,15 @@ pub enum Color {
     Black,
 }
 
+impl Color {
+    pub fn swapped(&self) -> Self {
+        match self {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Piece {
     Pawn(Color),

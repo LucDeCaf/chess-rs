@@ -142,8 +142,6 @@ pub mod direction {
     }
 }
 
-use std::array::from_fn;
-
 use direction::Direction;
 
 use crate::{
@@ -152,7 +150,7 @@ use crate::{
     square::Square,
 };
 
-use super::magics::{BISHOP_INDEX_BITS, BISHOP_MAGICS, ROOK_INDEX_BITS, ROOK_MAGICS};
+use super::magics::{BISHOP_MAGICS, ROOK_MAGICS};
 
 pub fn rank(i: usize) -> usize {
     i / 8
@@ -362,7 +360,7 @@ pub fn generate_king_move_masks() -> [Mask; 64] {
     masks.map(|val| Mask(val))
 }
 
-pub fn create_move_list(direction: Direction, magics: &[MagicEntry]) -> Vec<Vec<Mask>> {
+pub fn create_move_list(direction: Direction, magics: &[MagicEntry; 64]) -> Vec<Vec<Mask>> {
     let mut moves = Vec::with_capacity(64);
 
     for (i, magic) in magics.into_iter().enumerate() {
@@ -399,49 +397,29 @@ pub fn try_fill_magic_table(
 }
 
 #[derive(Debug)]
-pub struct MoveGen {
-    orthogonal_magics: Vec<MagicEntry>,
-    diagonal_magics: Vec<MagicEntry>,
-    orthogonal_moves: Vec<Vec<Mask>>,
-    diagonal_moves: Vec<Vec<Mask>>,
+pub struct SlidingMoves {
+    rook_magic_table: Vec<Vec<Mask>>,
+    bishop_magic_table: Vec<Vec<Mask>>,
 }
 
-impl MoveGen {
+impl SlidingMoves {
     pub fn init() -> Self {
-        let orthogonal_magics = Vec::from_iter::<[MagicEntry; 64]>(from_fn(|i| MagicEntry {
-            mask: Square::from_usize(i).unwrap().mask(),
-            magic: ROOK_MAGICS[i],
-            index_bits: ROOK_INDEX_BITS,
-        }));
-
-        let diagonal_magics = Vec::from_iter::<[MagicEntry; 64]>(from_fn(|i| MagicEntry {
-            mask: Square::from_usize(i).unwrap().mask(),
-            magic: BISHOP_MAGICS[i],
-            index_bits: BISHOP_INDEX_BITS,
-        }));
-
-        let orthogonal_moves = create_move_list(Direction::Orthogonal, &orthogonal_magics);
-
-        let diagonal_moves = create_move_list(Direction::Diagonal, &diagonal_magics);
-
         Self {
-            orthogonal_magics,
-            diagonal_magics,
-            orthogonal_moves,
-            diagonal_moves,
+            rook_magic_table: create_move_list(Direction::Orthogonal, &ROOK_MAGICS),
+            bishop_magic_table: create_move_list(Direction::Diagonal, &BISHOP_MAGICS),
         }
     }
 
     pub fn get_rook_moves(&self, square: Square, blockers: Mask) -> Mask {
-        let magic = &self.orthogonal_magics[square as usize];
-        let moves = &self.orthogonal_moves[square as usize];
+        let magic = &ROOK_MAGICS[square as usize];
+        let moves = &self.rook_magic_table[square as usize];
 
         moves[magic.index(blockers)]
     }
 
     pub fn get_bishop_moves(&self, square: Square, blockers: Mask) -> Mask {
-        let magic = &self.diagonal_magics[square as usize];
-        let moves = &self.diagonal_moves[square as usize];
+        let magic = &BISHOP_MAGICS[square as usize];
+        let moves = &self.bishop_magic_table[square as usize];
 
         moves[magic.index(blockers)]
     }

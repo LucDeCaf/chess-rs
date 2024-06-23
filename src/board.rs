@@ -1,10 +1,11 @@
 use crate::mask::Mask;
+use crate::move_gen::move_gen::SlidingMoves;
 use crate::move_gen::{
-    masks::{
+    move_masks::{
         BLACK_PAWN_CAPTURE_MASKS, BLACK_PAWN_MOVE_MASKS, KING_MOVE_MASKS, KNIGHT_MOVE_MASKS,
         WHITE_PAWN_CAPTURE_MASKS, WHITE_PAWN_MOVE_MASKS,
     },
-    move_gen::MoveGen,
+    // move_gen::SlidingMoves,
 };
 use crate::moves::{Move, MoveError};
 use crate::piece::{Color, Piece};
@@ -12,6 +13,9 @@ use crate::square::{Rank, Square};
 
 // Starting position
 pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+// Testing position
+pub const TEST_POSITION_FEN: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
 
 #[derive(Debug)]
 pub enum FenError {
@@ -26,9 +30,14 @@ pub enum FenError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CastleDirection {
+    Kingside,
+    Queenside,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpecialMove {
-    CastleKingside,
-    CastleQueenside,
+    Castle(CastleDirection),
     EnPassant,
     Promotion,
 }
@@ -37,17 +46,16 @@ pub enum SpecialMove {
 #[derive(Debug, Clone)]
 struct BoardState {
     active_color: Color,
-
     masks: [Mask; 12],
 
-    // Special moves
-    prev_move: Option<Move>,      // En passant
-    white_can_castle_short: bool, // White castling kingside
-    white_can_castle_long: bool,  // White castling queenside
-    black_can_castle_short: bool, // Black castling kingside
-    black_can_castle_long: bool,  // Black castling queenside
-    halfmoves: u8,                // 50 move rule
-    fullmoves: u32,               // Keeping track of game length
+    // Historical data
+    last_move: Option<Move>, // En passant
+    a1_rook_moved: bool,
+    h1_rook_moved: bool,
+    a8_rook_moved: bool,
+    h8_rook_moved: bool,
+    halfmoves: u8, // 50 move rule
+    fullmoves: u32,
 }
 
 #[allow(unused)]
@@ -55,14 +63,13 @@ impl BoardState {
     fn new() -> Self {
         Self {
             active_color: Color::White,
-
             masks: [Mask(0); 12],
 
-            prev_move: None,
-            white_can_castle_short: true,
-            white_can_castle_long: true,
-            black_can_castle_short: true,
-            black_can_castle_long: true,
+            last_move: None,
+            a1_rook_moved: false,
+            h1_rook_moved: false,
+            a8_rook_moved: false,
+            h8_rook_moved: false,
             halfmoves: 0,
             fullmoves: 0,
         }
@@ -135,10 +142,10 @@ impl BoardState {
                 break 'castling_rights;
             }
 
-            state.white_can_castle_short = false;
-            state.white_can_castle_long = false;
-            state.black_can_castle_short = false;
-            state.black_can_castle_long = false;
+            state.a1_rook_moved = true;
+            state.h1_rook_moved = true;
+            state.a8_rook_moved = true;
+            state.h8_rook_moved = true;
 
             let mut prev: u8 = 0;
 
@@ -149,27 +156,27 @@ impl BoardState {
                         panic!("Castling rights in FEN string ordered incorrectly");
                     }
                     prev = 1;
-                    state.white_can_castle_short = true;
+                    state.a1_rook_moved = false;
                 }
                 'Q' => {
                     if prev > 1 {
                         panic!("Castling rights in FEN string ordered incorrectly");
                     }
                     prev = 2;
-                    state.white_can_castle_short = true;
+                    state.h1_rook_moved = false;
                 }
                 'k' => {
                     if prev > 2 {
                         panic!("Castling rights in FEN string ordered incorrectly");
                     }
                     prev = 3;
-                    state.white_can_castle_short = true;
+                    state.a8_rook_moved = false;
                 }
                 'q' => {
                     if prev > 3 {
                         panic!("Castling rights in FEN string ordered incorrectly");
                     }
-                    state.white_can_castle_short = true;
+                    state.h8_rook_moved = false;
                 }
                 _ => panic!("Third segment of FEN string should only contain the characters 'K', 'Q', 'k', 'q'"),
             }
@@ -177,7 +184,7 @@ impl BoardState {
         }
 
         'en_passant: {
-            state.prev_move = None;
+            state.last_move = None;
 
             let Some(next_segment) = segments.next() else {
                 return Err(FenError::BadEnPassant);
@@ -211,7 +218,7 @@ impl BoardState {
                 _ => return Err(FenError::BadEnPassant),
             };
 
-            state.prev_move = Some(mv);
+            state.last_move = Some(mv);
         }
 
         'halfmoves: {
@@ -283,8 +290,8 @@ impl BoardState {
         &mut self.masks[piece.to_mask_index()]
     }
 
-    fn mask(&self, piece: Piece) -> &Mask {
-        &self.masks[piece.to_mask_index()]
+    fn mask(&self, piece: Piece) -> Mask {
+        self.masks[piece.to_mask_index()]
     }
 
     fn swap_active_color(&mut self) {
@@ -336,7 +343,7 @@ impl BoardState {
 
     pub fn possible_en_passant(&self) -> bool {
         let active_color = self.active_color;
-        let Some(last_move) = self.prev_move else {
+        let Some(last_move) = self.last_move else {
             return false;
         };
 
@@ -361,7 +368,7 @@ impl BoardState {
 
     pub fn en_passant_mask(&self) -> Option<Mask> {
         let active_color = self.active_color;
-        let last_move = self.prev_move?;
+        let last_move = self.last_move?;
 
         let to_rank = last_move.to.rank();
         let from_rank = last_move.from.rank();
@@ -379,19 +386,17 @@ impl BoardState {
         Some(Square::from_coords(capture_rank, capture_file).mask())
     }
 
-    pub fn is_move_legal(&self, mv: Move, sliding_move_generator: &MoveGen) -> bool {
+    pub fn is_move_legal(&self, mv: Move, sliding_moves: &SlidingMoves) -> bool {
         // Prevent piece from moving to itself
         if mv.from == mv.to {
             return false;
         }
 
-        let Some((legal_moves, _)) =
-            self.get_pseudolegal_move_mask(mv.from, sliding_move_generator)
-        else {
+        let Some((legal_moves, _)) = self.get_pseudolegal_move_mask(mv.from, sliding_moves) else {
             return false;
         };
 
-        (legal_moves.0 & 1 << mv.to as usize) > 0
+        (legal_moves & mv.to.mask()).0 > 0
     }
 
     fn move_masks(&self, piece: Piece) -> Option<Vec<Mask>> {
@@ -406,10 +411,103 @@ impl BoardState {
         }
     }
 
+    pub fn can_castle(
+        &self,
+        color: Color,
+        direction: CastleDirection,
+        sliding_moves: &SlidingMoves,
+    ) -> bool {
+        const WHITE_BLOCKERS_SHORT: &[Square] = &[Square::F1, Square::G1];
+        const WHITE_BLOCKERS_LONG: &[Square] = &[Square::D1, Square::C1, Square::B1];
+        const BLACK_BLOCKERS_SHORT: &[Square] = &[Square::F8, Square::G8];
+        const BLACK_BLOCKERS_LONG: &[Square] = &[Square::D8, Square::C8, Square::B8];
+
+        let king_square = match color {
+            Color::White => Square::E1,
+            Color::Black => Square::E8,
+        };
+
+        let enemy_color = color.swapped();
+
+        // Check if king in check
+        if self.attacked_by(king_square, enemy_color, sliding_moves) {
+            return false;
+        }
+
+        let relevant_blockers = match color {
+            Color::White => match direction {
+                CastleDirection::Kingside => WHITE_BLOCKERS_SHORT,
+                CastleDirection::Queenside => WHITE_BLOCKERS_LONG,
+            },
+            Color::Black => match direction {
+                CastleDirection::Kingside => BLACK_BLOCKERS_SHORT,
+                CastleDirection::Queenside => BLACK_BLOCKERS_LONG,
+            },
+        };
+
+        // Check for pieces in the way
+        for blocker_square in relevant_blockers {
+            if let Some(_) = self.piece_at_square(*blocker_square) {
+                return false;
+            }
+        }
+
+        // Check for checks in the way of the king's path
+        for blocker_square in &relevant_blockers[..2] {
+            if self.attacked_by(*blocker_square, enemy_color, sliding_moves) {
+                return false;
+            };
+        }
+
+        true
+    }
+
+    pub fn in_check(&self, color: Color, sliding_moves: &SlidingMoves) -> bool {
+        let king_mask = self.mask(Piece::King(color));
+        let king_square: Square = king_mask.ones()[0];
+
+        self.attacked_by(king_square, color, sliding_moves)
+    }
+
+    pub fn attacked_by(&self, square: Square, color: Color, sliding_moves: &SlidingMoves) -> bool {
+        let square_index = square as usize;
+
+        let pawn_mask = self.mask(Piece::Pawn(color));
+        let pawn_attacks = match color {
+            Color::White => &WHITE_PAWN_CAPTURE_MASKS,
+            Color::Black => &BLACK_PAWN_CAPTURE_MASKS,
+        };
+        if (pawn_attacks[square_index] & pawn_mask).0 > 0 {
+            return true;
+        }
+
+        let knights = self.mask(Piece::Knight(color));
+        if (knights & KNIGHT_MOVE_MASKS[square_index]).0 > 0 {
+            return true;
+        }
+
+        let king = self.mask(Piece::King(color));
+        if (king & KING_MOVE_MASKS[square_index]).0 > 0 {
+            return true;
+        }
+
+        let rooks_queens = self.mask(Piece::Rook(color)) | self.mask(Piece::Queen(color));
+        if (sliding_moves.get_rook_moves(square, self.all_pieces_mask()) & rooks_queens).0 > 0 {
+            return true;
+        }
+
+        let bishops_queens = self.mask(Piece::Bishop(color)) | self.mask(Piece::Queen(color));
+        if (sliding_moves.get_bishop_moves(square, self.all_pieces_mask()) & bishops_queens).0 > 0 {
+            return true;
+        }
+
+        return false;
+    }
+
     pub fn get_pseudolegal_move_mask(
         &self,
         square: Square,
-        sliding_move_generator: &MoveGen,
+        sliding_moves: &SlidingMoves,
     ) -> Option<(Mask, Piece)> {
         let blockers = self.all_pieces_mask();
         let tile_mask = square.mask();
@@ -419,6 +517,7 @@ impl BoardState {
 
         // Prevent moving pieces of the wrong colour
         if color != self.active_color {
+            println!("bad color");
             return None;
         }
 
@@ -431,10 +530,10 @@ impl BoardState {
 
             match piece {
                 Piece::Rook(_) | Piece::Queen(_) => {
-                    move_mask |= sliding_move_generator.get_rook_moves(square, blockers);
+                    move_mask |= sliding_moves.get_rook_moves(square, blockers);
                 }
                 Piece::Bishop(_) | Piece::Queen(_) => {
-                    move_mask |= sliding_move_generator.get_bishop_moves(square, blockers);
+                    move_mask |= sliding_moves.get_bishop_moves(square, blockers);
                 }
                 _ => (),
             }
@@ -442,21 +541,44 @@ impl BoardState {
             // Grab move mask for the piece at the current square
             move_mask = self.move_masks(piece)?[square.to_shift()];
 
-            if let Piece::Pawn(_) = piece {
-                // Handle pawn captures and en passant
-                let capture_mask = match color {
-                    Color::White => WHITE_PAWN_CAPTURE_MASKS[square.to_shift()],
-                    Color::Black => BLACK_PAWN_CAPTURE_MASKS[square.to_shift()],
-                };
+            // Special moves
+            match piece {
+                Piece::Pawn(_) => {
+                    // Handle pawn captures and en passant
+                    let capture_mask = match color {
+                        Color::White => WHITE_PAWN_CAPTURE_MASKS[square.to_shift()],
+                        Color::Black => BLACK_PAWN_CAPTURE_MASKS[square.to_shift()],
+                    };
 
-                move_mask |= capture_mask & blockers;
+                    move_mask |= capture_mask & blockers;
 
-                if let Some(en_passant_mask) = self.en_passant_mask() {
-                    // If en passant mask can be found in capture mask
-                    if capture_mask & en_passant_mask != Mask(0) {
-                        move_mask |= en_passant_mask;
+                    if let Some(en_passant_mask) = self.en_passant_mask() {
+                        // If en passant mask can be found in capture mask
+                        if capture_mask & en_passant_mask != Mask(0) {
+                            move_mask |= en_passant_mask;
+                        }
                     }
                 }
+                Piece::King(color) => {
+                    // Kingside castling
+                    if self.can_castle(color, CastleDirection::Kingside, sliding_moves) {
+                        move_mask |= match color {
+                            Color::White => Square::G1,
+                            Color::Black => Square::G8,
+                        }
+                        .mask();
+                    }
+
+                    // Queenside castling
+                    if self.can_castle(color, CastleDirection::Queenside, sliding_moves) {
+                        move_mask |= match color {
+                            Color::White => Square::C1,
+                            Color::Black => Square::C8,
+                        }
+                        .mask();
+                    }
+                }
+                _ => (),
             }
         }
 
@@ -469,9 +591,9 @@ impl BoardState {
     pub fn get_pseudolegal_moves(
         &self,
         square: Square,
-        sliding_move_generator: &MoveGen,
+        sliding_moves: &SlidingMoves,
     ) -> Option<(Vec<Move>, Piece)> {
-        let (move_mask, piece) = self.get_pseudolegal_move_mask(square, sliding_move_generator)?;
+        let (move_mask, piece) = self.get_pseudolegal_move_mask(square, sliding_moves)?;
         Some((Move::from_move_mask(square, move_mask), piece))
     }
 }
@@ -482,7 +604,7 @@ pub struct Board {
     states: Vec<BoardState>,
 
     // Sliding piece magic bitboard helper struct
-    sliding_move_generator: MoveGen,
+    sliding_moves: SlidingMoves,
 }
 
 #[allow(unused)]
@@ -491,7 +613,7 @@ impl Board {
         // Use rook and bishop masks to generate queen masks
         let board = Board {
             states: Vec::new(),
-            sliding_move_generator: MoveGen::init(),
+            sliding_moves: SlidingMoves::init(),
         };
 
         board
@@ -521,13 +643,12 @@ impl Board {
     }
 
     /// Makes a move on the board, regardless of whether the move is legal or not.
-    pub fn make_move(&mut self, mv: Move) -> Result<(), MoveError> {
+    ///
+    /// Despite its name, this function does still check if the move is possible to make or not.
+    pub fn make_move_unchecked(&mut self, mv: Move) -> Result<(), MoveError> {
         // Store copy of old board state
         let mut new_state = self.current_state()?.clone();
         let active_color = new_state.active_color;
-
-        dbg!(&active_color);
-        dbg!(&mv);
 
         let Some(from_piece) = new_state.piece_at_square(mv.from) else {
             return Err(MoveError::MissingPiece);
@@ -537,49 +658,60 @@ impl Board {
             return Err(MoveError::WrongColor);
         }
 
-        let special_move: Option<SpecialMove> = 'special_move: {
-            match from_piece {
-                Piece::Pawn(_) => {
-                    // Check for promotion
-                    if mv.to.rank() == Rank::One || mv.to.rank() == Rank::Eight {
-                        break 'special_move Some(SpecialMove::Promotion);
-                    }
+        let mut special_move = None;
 
-                    // Check for en passant
-                    if let Some(mask) = new_state.en_passant_mask() {
-                        // Check if en passant mask equals move mask
-                        if mask == mv.to.mask() {
-                            break 'special_move Some(SpecialMove::EnPassant);
+        // Handle source-piece specific actions
+        match from_piece {
+            Piece::Pawn(_) => {
+                // Check for promotion
+                if mv.to.rank() == Rank::One || mv.to.rank() == Rank::Eight {
+                    special_move = Some(SpecialMove::Promotion);
+                }
+
+                // Check for en passant
+                if let Some(mask) = new_state.en_passant_mask() {
+                    // Check if en passant mask equals move mask
+                    if mask == mv.to.mask() {
+                        special_move = Some(SpecialMove::EnPassant);
+                    }
+                }
+            }
+            Piece::King(_) => {
+                // Check for castling by checking if king moved 2 squares horizontally
+                if mv.file_diff() == 2 {
+                    special_move = {
+                        // Check if king moved to the right or not
+                        let is_kingside = mv.to.file() > mv.from.file();
+
+                        if is_kingside {
+                            Some(SpecialMove::Castle(CastleDirection::Kingside))
+                        } else {
+                            Some(SpecialMove::Castle(CastleDirection::Queenside))
                         }
-                    }
+                    };
                 }
-                Piece::King(_) => {
-                    // Check for castling by checking if king moved 2 squares horizontally
-                    if mv.file_diff() == 2 {
-                        break 'special_move ({
-                            // Check if king moved to the right or not
-                            let is_kingside = mv.to.file() > mv.from.file();
-
-                            if is_kingside {
-                                Some(SpecialMove::CastleKingside)
-                            } else {
-                                Some(SpecialMove::CastleQueenside)
-                            }
-                        });
-                    }
-                }
+            }
+            Piece::Rook(_) => match mv.from {
+                Square::A1 => new_state.a1_rook_moved = true,
+                Square::A8 => new_state.a8_rook_moved = true,
+                Square::H1 => new_state.h1_rook_moved = true,
+                Square::H8 => new_state.h8_rook_moved = true,
                 _ => (),
-            };
+            },
+            _ => (),
+        }
 
-            None
-        };
+        // Handle target-square specific actions
 
         // Update board state
         let mut is_capture = false;
 
+        // Handle special moves/captures and normal captures separately
         if let Some(special_move) = special_move {
             match special_move {
                 SpecialMove::EnPassant => {
+                    is_capture = true;
+
                     let rank = mv.to.rank();
                     let file = mv.to.file();
 
@@ -596,29 +728,34 @@ impl Board {
                     };
                     *enemy_pawns &= !(Square::from_coords(offset_rank, file)).mask();
                 }
-                SpecialMove::CastleKingside => {
+                SpecialMove::Castle(direction) => {
                     let rook_mask = new_state.mask_mut(Piece::Rook(active_color));
-                    let start_square = match active_color {
-                        Color::White => Square::H1,
-                        Color::Black => Square::H8,
-                    };
-                    let end_square = match active_color {
-                        Color::White => Square::F1,
-                        Color::Black => Square::F8,
-                    };
-                    *rook_mask &= !start_square.mask();
-                    *rook_mask |= end_square.mask();
-                }
-                SpecialMove::CastleQueenside => {
-                    let rook_mask = new_state.mask_mut(Piece::Rook(active_color));
-                    let start_square = match active_color {
-                        Color::White => Square::A1,
-                        Color::Black => Square::A8,
-                    };
-                    let end_square = match active_color {
-                        Color::White => Square::D1,
-                        Color::Black => Square::D8,
-                    };
+                    let start_square: Square;
+                    let end_square: Square;
+
+                    match direction {
+                        CastleDirection::Kingside => {
+                            start_square = match active_color {
+                                Color::White => Square::H1,
+                                Color::Black => Square::H8,
+                            };
+                            end_square = match active_color {
+                                Color::White => Square::F1,
+                                Color::Black => Square::F8,
+                            };
+                        }
+                        CastleDirection::Queenside => {
+                            start_square = match active_color {
+                                Color::White => Square::A1,
+                                Color::Black => Square::A8,
+                            };
+                            end_square = match active_color {
+                                Color::White => Square::D1,
+                                Color::Black => Square::D8,
+                            };
+                        }
+                    }
+
                     *rook_mask &= !start_square.mask();
                     *rook_mask |= end_square.mask();
                 }
@@ -631,11 +768,22 @@ impl Board {
                     *pawn_mask &= !mv.from.mask();
                 }
             }
-        } else if let Some(to_piece) = new_state.piece_at_square(mv.to) {
+        } else if let Some(captured_piece) = new_state.piece_at_square(mv.to) {
             is_capture = true;
 
+            if let Piece::Rook(_) = captured_piece {
+                match mv.to {
+                    // Castling rights
+                    Square::A1 => new_state.a1_rook_moved = true,
+                    Square::A8 => new_state.a8_rook_moved = true,
+                    Square::H1 => new_state.h1_rook_moved = true,
+                    Square::H8 => new_state.h8_rook_moved = true,
+                    _ => (),
+                }
+            }
+
             // Remove captured piece
-            let mask = new_state.mask_mut(to_piece);
+            let mask = new_state.mask_mut(captured_piece);
             *mask &= !mv.to.mask();
         }
 
@@ -668,7 +816,7 @@ impl Board {
             }
         };
 
-        new_state.prev_move = Some(mv);
+        new_state.last_move = Some(mv);
         new_state.swap_active_color();
 
         // Add new state to state history
@@ -686,7 +834,7 @@ impl Board {
             return false;
         };
 
-        state.is_move_legal(mv, &self.sliding_move_generator)
+        state.is_move_legal(mv, &self.sliding_moves)
     }
 }
 
@@ -695,45 +843,40 @@ mod board_tests {
     use super::*;
 
     #[test]
-    fn load_from_fen() {
-        const TEST_POSITION_FEN: &str = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
-        let mut board = Board::new();
-        board.load_from_fen(TEST_POSITION_FEN);
-        board.current_state().unwrap().all_pieces_mask().print();
-    }
-
-    #[test]
     fn castling() {
         let mut board = Board::new();
-        board.load_from_fen(START_FEN);
+        board.load_from_fen(START_FEN).unwrap();
 
-        let _ = board.make_move(Move::from_long_algebraic("d2d4").unwrap());
-        let _ = board.make_move(Move::from_long_algebraic("g8f6").unwrap());
-        let _ = board.make_move(Move::from_long_algebraic("c1f4").unwrap());
-        let _ = board.make_move(Move::from_long_algebraic("e7e6").unwrap());
-        let _ = board.make_move(Move::from_long_algebraic("b1c3").unwrap());
-        let _ = board.make_move(Move::from_long_algebraic("f8e7").unwrap());
-        let _ = board.make_move(Move::from_long_algebraic("d1d2").unwrap());
-        let _ = board.make_move(Move::from_long_algebraic("e8g8").unwrap());
-        let _ = board.make_move(Move::from_long_algebraic("e1c1").unwrap());
+        // Setup pieces to castle (don't have FEN for this yet)
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("d2d4").unwrap());
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("g8f6").unwrap());
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("c1f4").unwrap());
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("e7e6").unwrap());
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("b1c3").unwrap());
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("f8e7").unwrap());
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("d1d2").unwrap());
+
+        // Castle black king kingside and white king queenside
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("e8g8").unwrap());
+        let _ = board.make_move_unchecked(Move::from_long_algebraic("e1c1").unwrap());
 
         assert_eq!(
             board.states[0].all_pieces_mask(),
-            Mask(18446462598732906495),
+            Mask(18446462598732906495), // Pregenerated mask w/ correct piece layout
         );
     }
 
     #[test]
     fn en_passant_is_legal() {
         let mut board = Board::new();
-        board.load_from_fen(START_FEN);
+        board.load_from_fen(START_FEN).unwrap();
 
-        let _ = board.make_move(Move {
+        let _ = board.make_move_unchecked(Move {
             from: Square::E2,
             to: Square::E5,
         });
 
-        let _ = board.make_move(Move {
+        let _ = board.make_move_unchecked(Move {
             from: Square::D7,
             to: Square::D5,
         });
@@ -747,9 +890,9 @@ mod board_tests {
     #[test]
     fn en_passant_mask() {
         let mut board = Board::new();
-        board.load_from_fen(START_FEN);
+        board.load_from_fen(START_FEN).unwrap();
 
-        let _ = board.make_move(Move {
+        let _ = board.make_move_unchecked(Move {
             from: Square::E2,
             to: Square::E4,
         });
@@ -759,7 +902,7 @@ mod board_tests {
             Some(Square::E3.mask())
         );
 
-        let _ = board.make_move(Move {
+        let _ = board.make_move_unchecked(Move {
             from: Square::E7,
             to: Square::E5,
         });
@@ -769,7 +912,7 @@ mod board_tests {
             Some(Square::E6.mask())
         );
 
-        let _ = board.make_move(Move {
+        let _ = board.make_move_unchecked(Move {
             from: Square::G1,
             to: Square::F3,
         });
@@ -778,25 +921,18 @@ mod board_tests {
     }
 
     #[test]
-    fn en_passant_captures_pawn() {
+    fn castling_rights() {
+        const TEST_POS_FEN: &str = "rnbqk2r/ppppbppp/4pn2/8/3P1B2/2N5/PPPQPPPP/R3KBNR b KQkq - 3 4";
+
         let mut board = Board::new();
-        board.load_from_fen(START_FEN);
+        board.load_from_fen(TEST_POS_FEN).unwrap();
 
-        let _ = board.make_move(Move {
-            from: Square::E2,
-            to: Square::E5,
-        });
+        assert!(board.is_move_legal(Move::from_long_algebraic("e8g8").unwrap()));
 
-        let _ = board.make_move(Move {
-            from: Square::D7,
-            to: Square::D5,
-        });
+        board
+            .make_move_unchecked(Move::from_long_algebraic("e8g8").unwrap())
+            .unwrap();
 
-        let _ = board.make_move(Move {
-            from: Square::E5,
-            to: Square::D6,
-        });
-
-        board.current_state().unwrap().all_pieces_mask().print();
+        assert!(board.is_move_legal(Move::from_long_algebraic("e1c1").unwrap()));
     }
 }
