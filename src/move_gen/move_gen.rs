@@ -108,38 +108,6 @@ pub mod direction {
             Mask(movemask)
         }
     }
-
-    #[cfg(test)]
-    mod direction_tests {
-        use super::*;
-
-        #[test]
-        fn debug_blockers() {
-            let ortho = Direction::Orthogonal;
-
-            for (i, blocker) in ortho.all_blockers().iter().enumerate() {
-                println!("blocker {}:", i);
-                blocker.print();
-                println!("");
-            }
-        }
-
-        #[test]
-        fn debug_relevant_blockers() {
-            for blocker_list in Direction::Orthogonal.all_blocker_subsets() {
-                blocker_list[0].print();
-                println!();
-            }
-        }
-
-        #[test]
-        fn debug_move_finding() {
-            let blockers =
-                Square::E6.mask() | Square::C4.mask() | Square::G4.mask() | Square::A8.mask();
-            let rook_moves_a1 = Direction::Orthogonal.moves_for(Square::E4, blockers);
-            rook_moves_a1.print();
-        }
-    }
 }
 
 use direction::Direction;
