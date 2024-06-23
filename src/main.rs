@@ -37,11 +37,14 @@ fn process_command(command: &Command, board: &mut Board) -> Option<String> {
             "id name Chress\nid author Luc de Cafmeyer\nuciok",
         )),
         Command::IsReady => Some(String::from("readyok")),
-        Command::UciNewGame => Some(String::from("readyok")),
+        Command::UciNewGame => {
+            *board = Board::new(START_FEN).unwrap();
+            Some(String::from("readyok"))
+        }
         Command::Position(moves) => {
             for mv in moves {
                 let mv = mv.trim();
-                
+
                 if mv == "startpos" {
                     board.load_from_fen(START_FEN).unwrap();
                     continue;
