@@ -5,448 +5,448 @@ pub const ROOK_MAGICS: &[MagicEntry; 64] = &[
         mask: Mask(
             282578800148862,
         ),
-        magic: 4648982621073047560,
+        magic: 9233509624274124800,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             565157600297596,
         ),
-        magic: 288934205327454240,
+        magic: 148636800800260161,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             1130315200595066,
         ),
-        magic: 4688251612831941637,
+        magic: 4612813087782207744,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             2260630401190006,
         ),
-        magic: 72060352212238592,
+        magic: 4647719239263584257,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             4521260802379886,
         ),
-        magic: 1171525516227919936,
+        magic: 2533893270143304,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             9042521604759646,
         ),
-        magic: 617072323794567184,
+        magic: 725361083703362192,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             18085043209519166,
         ),
-        magic: 2394188721162560,
+        magic: 145243475985170496,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             36170086419038334,
         ),
-        magic: 4650107525084087968,
+        magic: 1425244162359298,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             282578800180736,
         ),
-        magic: 577023739871363748,
+        magic: 2328361634685288448,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             565157600328704,
         ),
-        magic: 1180303742857118208,
+        magic: 1477748164827062528,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             1130315200625152,
         ),
-        magic: 9516176450659557396,
+        magic: 9802227544013930624,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             2260630401218048,
         ),
-        magic: 4684033883807809540,
+        magic: 289356424253816848,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             4521260802403840,
         ),
-        magic: 2201711837216,
+        magic: 108103992923591296,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             9042521604775424,
         ),
-        magic: 396642549202485280,
+        magic: 288441688577810433,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             18085043209518592,
         ),
-        magic: 288276555644305416,
+        magic: 4582841774015752,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             36170086419037696,
         ),
-        magic: 2927357663782371872,
+        magic: 9306270779596864,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             282578808340736,
         ),
-        magic: 9334840804851647492,
+        magic: 76642833485923840,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             565157608292864,
         ),
-        magic: 141292143120416,
+        magic: 326722253167263746,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             1130315208328192,
         ),
-        magic: 9044582784335936,
+        magic: 71485714596480,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             2260630408398848,
         ),
-        magic: 2379036467484839936,
+        magic: 2377913799547029000,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             4521260808540160,
         ),
-        magic: 568579860046,
+        magic: 1118847369248,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             9042521608822784,
         ),
-        magic: 2323858508308873256,
+        magic: 72092933129502784,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             18085043209388032,
         ),
-        magic: 4616758066574002832,
+        magic: 12384954830848008,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             36170086418907136,
         ),
-        magic: 1152925908156850193,
+        magic: 1152957003250832130,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             282580897300736,
         ),
-        magic: 4035296186838581250,
+        magic: 1443421418820796992,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             565159647117824,
         ),
-        magic: 1333140258775369729,
+        magic: 7037021629530192,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             1130317180306432,
         ),
-        magic: 3967671273483404320,
+        magic: 1460295484454207552,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             2260632246683648,
         ),
-        magic: 9516111102472617988,
+        magic: 72339207032416544,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             4521262379438080,
         ),
-        magic: 2251937454227520,
+        magic: 14483603889484482560,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             9042522644946944,
         ),
-        magic: 576461027452420224,
+        magic: 20266340596187456,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             18085043175964672,
         ),
-        magic: 306385512787632129,
+        magic: 360290721384646912,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             36170086385483776,
         ),
-        magic: 9223372059403392002,
+        magic: 2377911735876222978,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             283115671060736,
         ),
-        magic: 1152992047064695104,
+        magic: 4756364298325332481,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             565681586307584,
         ),
-        magic: 2260877495762960,
+        magic: 5926772296745223170,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             1130822006735872,
         ),
-        magic: 5908936050759706753,
+        magic: 274888392832,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             2261102847592448,
         ),
-        magic: 2310452712787017730,
+        magic: 704808429428928,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             4521664529305600,
         ),
-        magic: 2305924375259382809,
+        magic: 18019072508166274,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             9042787892731904,
         ),
-        magic: 1190086098248794144,
+        magic: 9223389633692569668,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             18085034619584512,
         ),
-        magic: 2342096106671900161,
+        magic: 1162220306170130,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             36170077829103616,
         ),
-        magic: 2533549685342755,
+        magic: 9044608463962113,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             420017753620736,
         ),
-        magic: 5838917470937682144,
+        magic: 144117395957491204,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             699298018886144,
         ),
-        magic: 141429112315904,
+        magic: 13835072359671023616,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             1260057572672512,
         ),
-        magic: 4039729183595697168,
+        magic: 7008730220240969856,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             2381576680245248,
         ),
-        magic: 14109517876838464,
+        magic: 9223398979486941446,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             4624614895390720,
         ),
-        magic: 72092779504730560,
+        magic: 2449993382737511424,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             9110691325681664,
         ),
-        magic: 4673998209152,
+        magic: 10525194079304680088,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             18082844186263552,
         ),
-        magic: 144115480671030289,
+        magic: 54043831326213632,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             36167887395782656,
         ),
-        magic: 16142627582829986048,
+        magic: 6917687357349072913,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             35466950888980736,
         ),
-        magic: 2455647346470486532,
+        magic: 9147937284555268,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             34905104758997504,
         ),
-        magic: 2306971117039911960,
+        magic: 577023977673720904,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             34344362452452352,
         ),
-        magic: 36099513674366980,
+        magic: 153403871979634689,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             33222877839362048,
         ),
-        magic: 1170938326121144328,
+        magic: 1099513733224,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             30979908613181440,
         ),
-        magic: 9944116203586977856,
+        magic: 13835060564650377344,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             26493970160820224,
         ),
-        magic: 146055135296,
+        magic: 9241527739801206912,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             17522093256097792,
         ),
-        magic: 1155885797786783749,
+        magic: 1153203555378683920,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             35607136465616896,
         ),
-        magic: 4756364297653747873,
+        magic: 1442278089924055108,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             9079539427579068672,
         ),
-        magic: 4612409772175564838,
+        magic: 72092787000541258,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             8935706818303361536,
         ),
-        magic: 1691051437855493,
+        magic: 1477181228347253257,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             8792156787827803136,
         ),
-        magic: 108157861530108226,
+        magic: 38299429263958050,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             8505056726876686336,
         ),
-        magic: 2256889355198554,
+        magic: 290344424046625,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             7930856604974452736,
         ),
-        magic: 2342021617242112033,
+        magic: 8933535121986,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             6782456361169985536,
         ),
-        magic: 4937107117690618129,
+        magic: 90080790855025153,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             4485655873561051136,
         ),
-        magic: 1130315275984914,
+        magic: 289356295394361486,
         index_bits: 16,
     },
     MagicEntry {
         mask: Mask(
             9115426935197958144,
         ),
-        magic: 2449976068818370565,
+        magic: 72057603340895282,
         index_bits: 16,
     },
 ];
@@ -455,448 +455,448 @@ pub const BISHOP_MAGICS: &[MagicEntry; 64] = &[
         mask: Mask(
             282578800148862,
         ),
-        magic: 578994456825431168,
+        magic: 4612286370164801536,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             565157600297596,
         ),
-        magic: 10961761596101104650,
+        magic: 1265511546840690848,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             1130315200595066,
         ),
-        magic: 586594126426800385,
+        magic: 4909064404336779872,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             2260630401190006,
         ),
-        magic: 36029966460142598,
+        magic: 2306124570089816704,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             4521260802379886,
         ),
-        magic: 2332899868676195848,
+        magic: 45603345380935680,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             9042521604759646,
         ),
-        magic: 595611100943228948,
+        magic: 36034295718019200,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             18085043209519166,
         ),
-        magic: 564058592137288,
+        magic: 2891315360714213504,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             36170086419038334,
         ),
-        magic: 1190076888997429504,
+        magic: 14123569915608760840,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             282578800180736,
         ),
-        magic: 2639681144940920836,
+        magic: 1157988193827030568,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             565157600328704,
         ),
-        magic: 306280097143333142,
+        magic: 4039835296669108529,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             1130315200625152,
         ),
-        magic: 290556947086770184,
+        magic: 91212323547512968,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             2260630401218048,
         ),
-        magic: 1153065542945439780,
+        magic: 594477506602991672,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             4521260802403840,
         ),
-        magic: 720663903462835201,
+        magic: 4755884778048201252,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             9042521604775424,
         ),
-        magic: 9223394112986817280,
+        magic: 595618926377894016,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             18085043209518592,
         ),
-        magic: 1743460408092721792,
+        magic: 77126343181994000,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             36170086419037696,
         ),
-        magic: 2318300613735120908,
+        magic: 577657021227141123,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             282578808340736,
         ),
-        magic: 9387898610734088320,
+        magic: 1159682403758312448,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             565157608292864,
         ),
-        magic: 9601674560312442912,
+        magic: 2306133306060571136,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             1130315208328192,
         ),
-        magic: 72095192183742477,
+        magic: 2752403997185,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             2260630408398848,
         ),
-        magic: 2467322346897411,
+        magic: 36101364796883203,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             4521260808540160,
         ),
-        magic: 38351249065772032,
+        magic: 568035198894209,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             9042521608822784,
         ),
-        magic: 9264080630382134416,
+        magic: 1206982293395374088,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             18085043209388032,
         ),
-        magic: 2314851447567581216,
+        magic: 2382475675700297986,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             36170086418907136,
         ),
-        magic: 9078676101530801,
+        magic: 91215493231805520,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             282580897300736,
         ),
-        magic: 144220749849366529,
+        magic: 76561262451886084,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             565159647117824,
         ),
-        magic: 105587513755648,
+        magic: 433471618889811976,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             1130317180306432,
         ),
-        magic: 9008298816962960,
+        magic: 6053436034895618432,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             2260632246683648,
         ),
-        magic: 18085050722099208,
+        magic: 145275255587076,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             4521262379438080,
         ),
-        magic: 93185965220168322,
+        magic: 577024801909377027,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             9042522644946944,
         ),
-        magic: 108650444850479105,
+        magic: 4773973935324660833,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             18085043175964672,
         ),
-        magic: 4612284189797023760,
+        magic: 576532238812906512,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             36170086385483776,
         ),
-        magic: 6075391152563489800,
+        magic: 4506075776688641,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             283115671060736,
         ),
-        magic: 4783429769584836736,
+        magic: 144697963734110344,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             565681586307584,
         ),
-        magic: 1342706011953299532,
+        magic: 147334994382848,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             1130822006735872,
         ),
-        magic: 288233674957651976,
+        magic: 2251816995692552,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             2261102847592448,
         ),
-        magic: 2307008498032967808,
+        magic: 9241391385918317953,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             4521664529305600,
         ),
-        magic: 18691769115220,
+        magic: 1171499008767037442,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             9042787892731904,
         ),
-        magic: 4648137045108113410,
+        magic: 2305843146922410020,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             18085034619584512,
         ),
-        magic: 70507265287810,
+        magic: 1225577851722399936,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             36170077829103616,
         ),
-        magic: 72699709927588096,
+        magic: 9403527018158489616,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             420017753620736,
         ),
-        magic: 564135365876736,
+        magic: 18014416247194112,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             699298018886144,
         ),
-        magic: 13828832656367616,
+        magic: 633321919877792,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             1260057572672512,
         ),
-        magic: 220747850033136645,
+        magic: 577308344503511568,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             2381576680245248,
         ),
-        magic: 563655410205700,
+        magic: 1180000848273522816,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             4624614895390720,
         ),
-        magic: 576479444009615492,
+        magic: 38843585440799748,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             9110691325681664,
         ),
-        magic: 4630285425848615936,
+        magic: 9223373428425238532,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             18082844186263552,
         ),
-        magic: 9225694206511681632,
+        magic: 9016022193537286,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             36167887395782656,
         ),
-        magic: 434670009663750149,
+        magic: 5332334598045052932,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             35466950888980736,
         ),
-        magic: 630798654696888480,
+        magic: 1306193494373631043,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             34905104758997504,
         ),
-        magic: 9016029707633250,
+        magic: 3676773875190336,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             34344362452452352,
         ),
-        magic: 9200721891300481,
+        magic: 1308418971404306,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             33222877839362048,
         ),
-        magic: 649644590921631940,
+        magic: 17592254202372,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             30979908613181440,
         ),
-        magic: 2882305282220755616,
+        magic: 180144673632827410,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             26493970160820224,
         ),
-        magic: 436849460749271330,
+        magic: 5782762676212080714,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             17522093256097792,
         ),
-        magic: 2594073523894947904,
+        magic: 11336000018090066,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             35607136465616896,
         ),
-        magic: 4683778814210211920,
+        magic: 1159888079134265348,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             9079539427579068672,
         ),
-        magic: 1146047062114305,
+        magic: 17627898479106,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             8935706818303361536,
         ),
-        magic: 576637292673238085,
+        magic: 14153412028525707778,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             8792156787827803136,
         ),
-        magic: 1128236639911961,
+        magic: 39547260299649282,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             8505056726876686336,
         ),
-        magic: 504686047629673090,
+        magic: 117102939585118465,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             7930856604974452736,
         ),
-        magic: 9511637606136283246,
+        magic: 14411536537278242882,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             6782456361169985536,
         ),
-        magic: 54254629790189569,
+        magic: 612489841413859329,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             4485655873561051136,
         ),
-        magic: 10377142521271685713,
+        magic: 90075326784291348,
         index_bits: 14,
     },
     MagicEntry {
         mask: Mask(
             9115426935197958144,
         ),
-        magic: 34696937730,
+        magic: 40957111533705,
         index_bits: 14,
     },
 ];

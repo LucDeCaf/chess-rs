@@ -14,6 +14,12 @@ impl Move {
         })
     }
 
+    pub fn long_algebraic(&self) -> String {
+        let first_algebraic = self.from.to_string();
+        let second_algebraic = self.to.to_string();
+        format!("{}{}", first_algebraic, second_algebraic)
+    }
+
     pub fn from_move_mask(from: Square, move_mask: Mask) -> Vec<Move> {
         let targets = move_mask.ones();
         let mut moves = Vec::with_capacity(targets.len());
@@ -40,4 +46,5 @@ pub enum MoveError {
     NoBoardState,
     MissingPiece,
     WrongColor,
+    NoPreviousMoves,
 }

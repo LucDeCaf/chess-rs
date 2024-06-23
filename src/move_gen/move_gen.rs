@@ -440,3 +440,17 @@ impl MagicEntry {
         (mul >> (64 - self.index_bits)) as usize
     }
 }
+
+#[cfg(test)]
+mod move_gen_tests {
+    use super::*;
+
+    #[test]
+    fn bishop_jumping() {
+        let movegen = SlidingMoves::init();
+
+        BISHOP_MAGICS[Square::C1 as usize].mask.print();
+
+        movegen.get_bishop_moves(Square::C1, Mask(u64::MAX)).print();
+    }
+}

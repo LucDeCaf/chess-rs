@@ -252,7 +252,6 @@ impl BoardState {
     }
 
     /// Makes a move on the board, regardless of whether the move is legal or not.
-    ///
     /// Despite its name, this function does still check if the move is possible to make or not.
     pub fn make_move_unchecked(&self, mv: Move) -> Result<BoardState, MoveError> {
         // Store copy of old board state
@@ -432,10 +431,15 @@ impl BoardState {
         mv: Move,
         sliding_moves: &SlidingMoves,
     ) -> Result<BoardState, MoveError> {
-        // Make sure move isn't illegal
-        if !self.is_move_legal(mv, sliding_moves) {
+        // Make sure move is in pseudolegal move mask
+        if self.get_pseudolegal_move_mask(mv.from, sliding_moves) == Mask(0) {
             return Err(MoveError::IllegalMove);
         }
+
+        // // Make sure move isn't illegal
+        // if !self.is_move_legal(mv, sliding_moves) {
+        //     return Err(MoveError::IllegalMove);
+        // }
 
         self.make_move_unchecked(mv)
     }
@@ -703,7 +707,6 @@ impl BoardState {
 
     pub fn get_pseudolegal_move_mask(&self, square: Square, sliding_moves: &SlidingMoves) -> Mask {
         let blockers = self.all_pieces_mask();
-        let tile_mask = square.mask();
 
         let Some(piece) = self.piece_at_square(square) else {
             return Mask(0);
@@ -789,6 +792,9 @@ impl BoardState {
 }
 
 #[derive(Debug)]
+pub struct BoardInitError;
+
+#[derive(Debug)]
 pub struct Board {
     // Board state and state history
     states: Vec<BoardState>,
@@ -799,28 +805,22 @@ pub struct Board {
 
 #[allow(unused)]
 impl Board {
-    pub fn new() -> Self {
-        // Use rook and bishop masks to generate queen masks
-        let board = Board {
+    pub fn new(fen: &str) -> Result<Self, BoardInitError> {
+        let mut board = Board {
             states: Vec::new(),
             sliding_moves: SlidingMoves::init(),
         };
+        board.load_from_fen(fen);
 
-        board
+        Ok(board)
     }
 
-    fn current_state(&self) -> Result<&BoardState, MoveError> {
-        match self.states.last() {
-            Some(state) => Ok(state),
-            None => Err(MoveError::NoBoardState),
-        }
+    fn current_state(&self) -> &BoardState {
+        self.states.last().unwrap()
     }
 
-    fn current_state_mut(&mut self) -> Result<&mut BoardState, MoveError> {
-        match self.states.last_mut() {
-            Some(state) => Ok(state),
-            None => Err(MoveError::NoBoardState),
-        }
+    fn current_state_mut(&mut self) -> &mut BoardState {
+        self.states.last_mut().unwrap()
     }
 
     pub fn load_from_fen(&mut self, fen: &str) -> Result<(), FenError> {
@@ -832,30 +832,49 @@ impl Board {
         Ok(())
     }
 
+    pub fn legal_moves(&self) -> Vec<Move> {
+        let mut legal_moves = Vec::new();
+        let state = self.current_state();
+
+        for i in 0..64 {
+            let square = Square::from_usize(i).unwrap();
+            let pseudolegal_moves = state.get_pseudolegal_moves(square, &self.sliding_moves);
+
+            for mv in pseudolegal_moves {
+                if self.is_move_legal(mv) {
+                    legal_moves.push(mv);
+                }
+            }
+        }
+
+        legal_moves
+    }
+
     pub fn make_move_unchecked(&mut self, mv: Move) -> Result<(), MoveError> {
-        let old_state = self.current_state()?;
+        let old_state = self.current_state();
         let new_state = old_state.make_move_unchecked(mv)?;
         self.states.push(new_state);
         Ok(())
     }
 
     pub fn make_move(&mut self, mv: Move) -> Result<(), MoveError> {
-        let old_state = self.current_state()?;
+        let old_state = self.current_state();
         let new_state = old_state.make_move(mv, &self.sliding_moves)?;
         self.states.push(new_state);
         Ok(())
     }
 
-    pub fn unmake_move(&mut self) {
-        self.states.pop();
+    pub fn unmake_move(&mut self) -> Result<(), MoveError> {
+        if self.states.len() > 1 {
+            self.states.pop();
+            Ok(())
+        } else {
+            Err(MoveError::NoPreviousMoves)
+        }
     }
 
     pub fn is_move_legal(&self, mv: Move) -> bool {
-        let Ok(state) = self.current_state() else {
-            return false;
-        };
-
-        state.is_move_legal(mv, &self.sliding_moves)
+        self.current_state().is_move_legal(mv, &self.sliding_moves)
     }
 }
 
@@ -865,8 +884,7 @@ mod board_tests {
 
     #[test]
     fn castling() {
-        let mut board = Board::new();
-        board.load_from_fen(START_FEN).unwrap();
+        let mut board = Board::new(START_FEN).unwrap();
 
         // Setup pieces to castle (don't have FEN for this yet)
         let _ = board.make_move_unchecked(Move::from_long_algebraic("d2d4").unwrap());
@@ -889,8 +907,7 @@ mod board_tests {
 
     #[test]
     fn en_passant_is_legal() {
-        let mut board = Board::new();
-        board.load_from_fen(START_FEN).unwrap();
+        let mut board = Board::new(START_FEN).unwrap();
 
         board
             .make_move_unchecked(Move {
@@ -914,8 +931,7 @@ mod board_tests {
 
     #[test]
     fn en_passant_mask() {
-        let mut board = Board::new();
-        board.load_from_fen(START_FEN).unwrap();
+        let mut board = Board::new(START_FEN).unwrap();
 
         let _ = board.make_move_unchecked(Move {
             from: Square::E2,
@@ -923,7 +939,7 @@ mod board_tests {
         });
 
         assert_eq!(
-            board.current_state().unwrap().en_passant_mask(),
+            board.current_state().en_passant_mask(),
             Some(Square::E3.mask())
         );
 
@@ -933,7 +949,7 @@ mod board_tests {
         });
 
         assert_eq!(
-            board.current_state().unwrap().en_passant_mask(),
+            board.current_state().en_passant_mask(),
             Some(Square::E6.mask())
         );
 
@@ -942,15 +958,14 @@ mod board_tests {
             to: Square::F3,
         });
 
-        assert_eq!(board.current_state().unwrap().en_passant_mask(), None);
+        assert_eq!(board.current_state().en_passant_mask(), None);
     }
 
     #[test]
     fn castling_rights() {
         const TEST_POS_FEN: &str = "rnbqk2r/ppppbppp/4pn2/8/3P1B2/2N5/PPPQPPPP/R3KBNR b KQkq - 3 4";
 
-        let mut board = Board::new();
-        board.load_from_fen(TEST_POS_FEN).unwrap();
+        let mut board = Board::new(TEST_POS_FEN).unwrap();
 
         assert!(board.is_move_legal(Move::from_long_algebraic("e8g8").unwrap()));
 
