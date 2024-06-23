@@ -52,7 +52,7 @@ fn main() -> std::io::Result<()> {
     let (rook_magics, _rook_table) = create_magics(Direction::Orthogonal, rook_index_bits);
 
     let bishop_index_bits = 14;
-    let (bishop_magics, _bishop_table) = create_magics(Direction::Orthogonal, bishop_index_bits);
+    let (bishop_magics, _bishop_table) = create_magics(Direction::Diagonal, bishop_index_bits);
 
     let mut buf = String::from("use super::move_gen::MagicEntry;\nuse crate::mask::Mask;\n");
 
@@ -62,23 +62,11 @@ fn main() -> std::io::Result<()> {
         rook_magics
     ));
 
-    // // Rook move table
-    // buf.push_str(&format!(
-    //     "pub const ROOK_MAGIC_TABLE: &[&[Mask]; 64] = {:?};\n",
-    //     rook_table
-    // ));
-
     // Bishop magics
     buf.push_str(&format!(
         "pub const BISHOP_MAGICS: &[MagicEntry; 64] = &{:#?};\n",
         bishop_magics
     ));
-
-    // // Bishop move table
-    // buf.push_str(&format!(
-    //     "pub const ROOK_MAGIC_TABLE: &[&[Mask]; 64] = {:?};\n",
-    //     bishop_table
-    // ));
 
     fs::create_dir_all(DIR_PATH)?;
     fs::write(format!("{DIR_PATH}/{FILE_NAME}"), buf)?;
