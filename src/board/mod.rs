@@ -1,12 +1,17 @@
-use crate::mask::Mask;
-use crate::move_gen::move_gen::SlidingMoves;
+pub mod mask;
+pub mod moves;
+pub mod piece;
+pub mod square;
+
+use crate::board::mask::Mask;
+use crate::board::moves::{Move, MoveError};
+use crate::board::piece::{Color, Piece};
+use crate::board::square::{Rank, Square};
 use crate::move_gen::move_masks::{
     BISHOP_MOVE_MASKS, BLACK_PAWN_CAPTURE_MASKS, BLACK_PAWN_MOVE_MASKS, KING_MOVE_MASKS,
     KNIGHT_MOVE_MASKS, ROOK_MOVE_MASKS, WHITE_PAWN_CAPTURE_MASKS, WHITE_PAWN_MOVE_MASKS,
 };
-use crate::moves::{Move, MoveError};
-use crate::piece::{Color, Piece};
-use crate::square::{Rank, Square};
+use crate::move_gen::SlidingMoves;
 
 // Starting position
 pub const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

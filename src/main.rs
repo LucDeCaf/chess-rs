@@ -1,5 +1,4 @@
-use chess::board::{Board, START_FEN};
-use chess::moves::Move;
+use chess::board::{moves::Move, Board, START_FEN};
 use rand::{thread_rng, Rng};
 
 #[derive(Debug, PartialEq, Eq)]

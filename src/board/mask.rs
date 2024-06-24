@@ -1,6 +1,6 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
 
-use crate::square::Square;
+use crate::board::square::Square;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Mask(pub u64);

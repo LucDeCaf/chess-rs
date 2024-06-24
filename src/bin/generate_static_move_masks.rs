@@ -1,8 +1,8 @@
 use std::{collections::HashMap, fs};
 
 use chess::{
-    mask::Mask,
-    move_gen::move_gen::{self, direction::Direction},
+    board::mask::Mask,
+    move_gen::{self, direction::Direction},
 };
 
 fn main() -> std::io::Result<()> {
@@ -69,7 +69,7 @@ fn main() -> std::io::Result<()> {
     const FILE_NAME: &str = "move_masks.rs";
 
     fs::create_dir_all(DIR_PATH)?;
-    let mut buf = String::from("use crate::mask::Mask;\n");
+    let mut buf = String::from("use crate::board::mask::Mask;\n");
 
     for (key, value) in move_masks.iter() {
         buf.push_str(&format!(

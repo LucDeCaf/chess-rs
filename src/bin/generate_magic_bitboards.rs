@@ -1,9 +1,8 @@
 use std::fs;
 
 use chess::{
-    mask::Mask,
-    move_gen::move_gen::{direction::Direction, try_fill_magic_table, MagicEntry},
-    square::Square,
+    board::{mask::Mask, square::Square},
+    move_gen::{direction::Direction, try_fill_magic_table, MagicEntry},
 };
 
 use rand::{thread_rng, Rng};
@@ -54,7 +53,7 @@ fn main() -> std::io::Result<()> {
     let bishop_index_bits = 14;
     let (bishop_magics, _bishop_table) = create_magics(Direction::Diagonal, bishop_index_bits);
 
-    let mut buf = String::from("use super::move_gen::MagicEntry;\nuse crate::mask::Mask;\n");
+    let mut buf = String::from("use super::MagicEntry;\nuse crate::board::mask::Mask;\n");
 
     // Rook magics
     buf.push_str(&format!(

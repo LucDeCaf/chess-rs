@@ -1,4 +1,4 @@
-use crate::mask::Mask;
+use crate::board::mask::Mask;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]

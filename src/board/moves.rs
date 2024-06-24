@@ -1,4 +1,4 @@
-use crate::{mask::Mask, square::Square};
+use crate::board::{mask::Mask, square::Square};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move {
