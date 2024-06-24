@@ -2,7 +2,7 @@
 pub mod perft {
     use chess::board::{Board, START_FEN};
 
-    fn perft(board: &mut Board, depth: u8) -> u64 {
+    fn perft(board: &mut Board, depth: usize) -> u64 {
         if depth == 0 {
             return 1;
         }
@@ -22,12 +22,12 @@ pub mod perft {
 
     #[test]
     fn starting_position() {
+        const EXPECTED: &[u64] = &[1, 20, 400, 8902, 197218, 4865609];
+
         let mut board = Board::new(START_FEN).unwrap();
 
-        let nodes = perft(&mut board, 1);
-        let legal_moves = board.legal_moves();
-
-        dbg!(legal_moves);
-        println!("{}", nodes);
+        for (i, expected_result) in EXPECTED.iter().enumerate() {
+            assert_eq!(perft(&mut board, i), *expected_result);
+        }
     }
 }
