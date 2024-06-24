@@ -14,7 +14,7 @@ pub mod direction {
         },
     };
 
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum Direction {
         Orthogonal,
         Diagonal,
@@ -340,6 +340,10 @@ pub fn create_move_list(direction: Direction, magics: &[MagicEntry; 64]) -> Vec<
         let move_table =
             try_fill_magic_table(direction, magic, Square::from_usize(i).unwrap()).unwrap();
         moves.push(move_table);
+    }
+
+    if direction == Direction::Diagonal {
+        magics[0].mask.print();
     }
 
     moves
