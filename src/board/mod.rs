@@ -46,7 +46,7 @@ pub enum SpecialMove {
 
 /// Stores all the necessary data to recreate a position on a Board
 #[derive(Debug, Clone)]
-struct BoardState {
+pub struct BoardState {
     active_color: Color,
     masks: [Mask; 12],
 
@@ -437,14 +437,11 @@ impl BoardState {
         sliding_moves: &SlidingMoves,
     ) -> Result<BoardState, MoveError> {
         // Make sure move is in pseudolegal move mask
-        if self.get_pseudolegal_move_mask(mv.from, sliding_moves) == Mask(0) {
+        let possible_moves = self.get_pseudolegal_move_mask(mv.from, sliding_moves);
+        if possible_moves == Mask(0) {
+            println!("No legal moves from that square");
             return Err(MoveError::IllegalMove);
         }
-
-        // // Make sure move isn't illegal
-        // if !self.is_move_legal(mv, sliding_moves) {
-        //     return Err(MoveError::IllegalMove);
-        // }
 
         self.make_move_unchecked(mv)
     }
@@ -730,10 +727,16 @@ impl BoardState {
         if piece.is_slider() {
             move_mask = Mask(0);
 
+            // Rook moves
             match piece {
                 Piece::Rook(_) | Piece::Queen(_) => {
                     move_mask |= sliding_moves.get_rook_moves(square, blockers);
                 }
+                _ => (),
+            }
+
+            // Queen moves
+            match piece {
                 Piece::Bishop(_) | Piece::Queen(_) => {
                     move_mask |= sliding_moves.get_bishop_moves(square, blockers);
                 }
@@ -746,6 +749,22 @@ impl BoardState {
             // Special moves
             match piece {
                 Piece::Pawn(_) => {
+                    // Prevent pawns double-hopping over pieces
+                    if color == Color::White && square.rank() == Rank::Two
+                        || color == Color::Black && square.rank() == Rank::Seven
+                    {
+                        let target_rank = match color {
+                            Color::White => Rank::Three,
+                            Color::Black => Rank::Six,
+                        };
+
+                        if let Some(_) =
+                            self.piece_at_square(Square::from_coords(target_rank, square.file()))
+                        {
+                            move_mask.0 = 0;
+                        }
+                    }
+
                     // Handle pawn captures and en passant
                     let capture_mask = match color {
                         Color::White => WHITE_PAWN_CAPTURE_MASKS[square.to_shift()],
@@ -761,7 +780,7 @@ impl BoardState {
                         }
                     }
                 }
-                Piece::King(color) => {
+                Piece::King(_) => {
                     // Kingside castling
                     if self.can_castle(color, CastleDirection::Kingside, sliding_moves) {
                         move_mask |= match color {
@@ -794,6 +813,18 @@ impl BoardState {
         let move_mask = self.get_pseudolegal_move_mask(square, sliding_moves);
         Move::from_move_mask(square, move_mask)
     }
+
+    pub fn print_debugging_information(&self) {
+        let sliding_moves = SlidingMoves::init();
+
+        for i in 0..64 {
+            let square = Square::from_u8(i).unwrap();
+            println!("Pseudolegal moves from {}: ", square.to_string());
+            self.get_pseudolegal_move_mask(square, &sliding_moves)
+                .print();
+            println!();
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -808,24 +839,20 @@ pub struct Board {
     sliding_moves: SlidingMoves,
 }
 
-#[allow(unused)]
 impl Board {
-    pub fn new(fen: &str) -> Result<Self, BoardInitError> {
+    pub fn new(fen: &str) -> Result<Self, FenError> {
         let mut board = Board {
             states: Vec::new(),
             sliding_moves: SlidingMoves::init(),
         };
-        board.load_from_fen(fen);
+
+        board.load_from_fen(fen)?;
 
         Ok(board)
     }
 
-    fn current_state(&self) -> &BoardState {
+    pub fn current_position(&self) -> &BoardState {
         self.states.last().unwrap()
-    }
-
-    fn current_state_mut(&mut self) -> &mut BoardState {
-        self.states.last_mut().unwrap()
     }
 
     pub fn load_from_fen(&mut self, fen: &str) -> Result<(), FenError> {
@@ -839,7 +866,7 @@ impl Board {
 
     pub fn legal_moves(&self) -> Vec<Move> {
         let mut legal_moves = Vec::new();
-        let state = self.current_state();
+        let state = self.current_position();
 
         for i in 0..64 {
             let square = Square::from_usize(i).unwrap();
@@ -856,14 +883,14 @@ impl Board {
     }
 
     pub fn make_move_unchecked(&mut self, mv: Move) -> Result<(), MoveError> {
-        let old_state = self.current_state();
+        let old_state = self.current_position();
         let new_state = old_state.make_move_unchecked(mv)?;
         self.states.push(new_state);
         Ok(())
     }
 
     pub fn make_move(&mut self, mv: Move) -> Result<(), MoveError> {
-        let old_state = self.current_state();
+        let old_state = self.current_position();
         let new_state = old_state.make_move(mv, &self.sliding_moves)?;
         self.states.push(new_state);
         Ok(())
@@ -879,7 +906,8 @@ impl Board {
     }
 
     pub fn is_move_legal(&self, mv: Move) -> bool {
-        self.current_state().is_move_legal(mv, &self.sliding_moves)
+        self.current_position()
+            .is_move_legal(mv, &self.sliding_moves)
     }
 }
 
@@ -944,7 +972,7 @@ mod board_tests {
         });
 
         assert_eq!(
-            board.current_state().en_passant_mask(),
+            board.current_position().en_passant_mask(),
             Some(Square::E3.mask())
         );
 
@@ -954,7 +982,7 @@ mod board_tests {
         });
 
         assert_eq!(
-            board.current_state().en_passant_mask(),
+            board.current_position().en_passant_mask(),
             Some(Square::E6.mask())
         );
 
@@ -963,7 +991,7 @@ mod board_tests {
             to: Square::F3,
         });
 
-        assert_eq!(board.current_state().en_passant_mask(), None);
+        assert_eq!(board.current_position().en_passant_mask(), None);
     }
 
     #[test]
@@ -979,5 +1007,13 @@ mod board_tests {
             .unwrap();
 
         assert!(board.is_move_legal(Move::from_long_algebraic("e1c1").unwrap()));
+    }
+
+    #[test]
+    fn excessive_moves() {
+        const TEST_POS_FEN: &str = "rnbqk2r/ppppbppp/4pn2/8/3P1B2/2N5/PPPQPPPP/R3KBNR b KQkq - 3 4";
+        let mut board = Board::new(TEST_POS_FEN).unwrap();
+
+        board.current_position().print_debugging_information();
     }
 }

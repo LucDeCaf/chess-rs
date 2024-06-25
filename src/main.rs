@@ -61,7 +61,7 @@ fn process_command(command: &Command, board: &mut Board) -> Option<String> {
             let legal_moves = board.legal_moves();
             let random_index = thread_rng().gen_range(0..legal_moves.len());
             let random_move = legal_moves[random_index];
-            Some(random_move.long_algebraic())
+            Some(format!("bestmove {}", random_move.long_algebraic()))
         }
         Command::Quit => None,
     }

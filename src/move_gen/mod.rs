@@ -342,10 +342,6 @@ pub fn create_move_list(direction: Direction, magics: &[MagicEntry; 64]) -> Vec<
         moves.push(move_table);
     }
 
-    if direction == Direction::Diagonal {
-        magics[0].mask.print();
-    }
-
     moves
 }
 
@@ -420,6 +416,8 @@ impl MagicEntry {
 
 #[cfg(test)]
 mod move_gen_tests {
+    use crate::board::{moves::Move, Board, START_FEN};
+
     use super::*;
 
     #[test]
@@ -429,5 +427,30 @@ mod move_gen_tests {
         BISHOP_MAGICS[Square::C1 as usize].mask.print();
 
         movegen.get_bishop_moves(Square::C1, Mask(u64::MAX)).print();
+    }
+
+    #[test]
+    fn queen_moves() {
+        let mut board = Board::new(START_FEN).unwrap();
+
+        board
+            .make_move(Move {
+                from: Square::E2,
+                to: Square::E4,
+            })
+            .unwrap();
+
+        board
+            .make_move(Move {
+                from: Square::G7,
+                to: Square::G5,
+            })
+            .unwrap();
+
+        dbg!(board.make_move(Move {
+            from: Square::D1,
+            to: Square::H5,
+        }))
+        .unwrap();
     }
 }
